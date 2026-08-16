@@ -4,9 +4,9 @@
 
 **命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
-**v1.0.0** 🎉
+**v1.1.0** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.0.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Version](https://img.shields.io/badge/Version-1.1.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -248,6 +248,13 @@ Windows 与 Linux 行为一致。
 ---
 
 ## 🏷️ 版本历史
+
+### v1.1.0（2026-08）— 跨平台兼容
+
+- 🖥️ **全系统兼容性测试**（详见 [COMPATIBILITY.md](COMPATIBILITY.md)）：
+  Windows 11 实测通过、Linux 脚本+静态验证通过、macOS 静态审查通过
+- 🐧 新增 `bin/deepseek`（bash）与 `install.sh`，支持 Linux / macOS / WSL
+- 🔧 路径统一 `path.join`（消除 Windows 反斜杠硬编码），代码无平台分支
 
 ### v1.0.0（2026-08）— 首个正式版
 

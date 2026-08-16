@@ -27,7 +27,7 @@ import { SessionId } from "@deepseek-ai/dsh-session";
 /** Stable Cordis plugin name. */
 const name = "cli-runner";
 /** The CLI's own semantic version, shown in the banner and README. */
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 /** Core services required before the interactive loop can start. */
 const inject = ["agentDefaultModel", "agents", "sessions", "llm", "permissionPresets", "agentPresets", "skills"];
 
