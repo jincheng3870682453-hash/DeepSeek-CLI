@@ -1,43 +1,92 @@
-# DeepSeek CLI — 命令行里的 DeepSeek Agent
+<div align="center">
 
-在 **cmd / PowerShell / Windows Terminal** 中直接与 DeepSeek Agent 对话。
-基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 `cli` profile
-（交互式 runner 插件），提供 Codex / Claude Code 风格的终端体验。
+# 🐋 DeepSeek CLI
 
-## 功能特性
+**命令行里的 DeepSeek Agent** — Codex / Claude Code 风格的终端交互体验，构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 
-- 🐋 **品牌启动画面**：DeepSeek 大鲸鱼 logo（从官方 favicon 渲染）+ DEEPSEEK 大字
-- 🎮 **方向键配置向导**：↑↓ 导航菜单（自动探测终端能力，不支持时降级为数字输入）
-- 🔑 **首次使用引导**：自动检测并引导配置 API Key（隐藏输入，回显星号）
-- 🛡️ **权限模式**：只读 / 工作区写入 / 完全访问（实时切换，与网页版同一机制）
-- 📂 **工作目录**：当前目录 / 历史记录 / 自定义路径（支持 `~`）
-- 🧠 **模型选择**：deepseek-v4-flash / deepseek-v4-pro
-- 📋 **多行粘贴**：粘贴整段代码自动合并为一条消息
-- ⚡ **流式输出**：边生成边显示，工具调用内联提示
-- ⌨️ **完整 CLI 交互**：Ctrl+C 中断回答 / 清行 / 退出，ESC 等同
+[![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
+[![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
+[![Powered by](https://img.shields.io/badge/Model-DeepSeek--V4-4D6BFE)](https://www.deepseek.com)
 
-## 前置条件
+```
+                 ████████
+               ████████████
+             ████████████████
+            ██████████████████
+           ████████████████████
+            ██████████████████
+             ████████████████
+               ████████████
+                 ████████
+```
 
-1. 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
-2. DeepSeek API Key（首次运行时引导配置）
+</div>
 
-## 安装
+---
+
+## ✨ 功能特性
+
+| | | |
+|---|---|---|
+| 🎮 **方向键配置向导** | 🛡️ **权限模式** | 🔑 **首次使用引导** |
+| ↑↓ 导航菜单（Codex 风格），自动探测终端能力 | 只读 / 工作区写入 / 完全访问，实时切换 | 自动检测并引导配置 API Key（隐藏输入） |
+| 📂 **工作区管理** | 🧠 **模型选择** | 📋 **多行粘贴** |
+| 当前目录 / 历史记录 / 自定义路径 | deepseek-v4-flash / deepseek-v4-pro | 粘贴整段代码自动合并为一条消息 |
+| ⚡ **流式输出** | ⌨️ **完整 CLI 交互** | 🐋 **品牌启动画面** |
+| 边生成边显示，工具调用内联提示 | Ctrl+C 中断/清行/退出，ESC 等同 | DeepSeek 大鲸鱼 logo + DEEPSEEK 大字 |
+
+---
+
+## 🎬 演示
+
+> 启动 → 配置向导（*终端窗口为动态 SVG：菜单光标上下移动、输入光标闪烁*）
+
+![DeepSeek CLI 演示](demo.svg)
+
+---
+
+## 🚀 快速开始
+
+### 前置条件
+
+- 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
+- DeepSeek API Key（首次运行自动引导配置）
+
+### 安装
 
 ```bat
 :: 1. 复制 profile 到 DSH
 xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 
-:: 2. 把 bin\deepseek.cmd / deepseek.ps1 放到 PATH 中的目录（如 node 全局目录）
-::    然后新开一个 cmd 窗口
+:: 2. 把 bin\deepseek.cmd / deepseek.ps1 放到 PATH 目录，新开终端
 ```
 
-或直接运行 `install.cmd`（自动执行第 1 步并提示第 2 步）。
+或直接运行 `install.cmd`。
 
-## 使用
+### 使用
 
 ```powershell
 deepseek            # 启动（等同 dsh --profile cli）
-dsh --profile cli   # 官方写法
+```
+
+首次运行会引导配置 API Key；之后进入配置向导，`↑↓` 选择后 `Enter` 确认即可开始对话。
+
+---
+
+## 🎮 交互
+
+### 配置向导
+
+```
+启动配置
+ ❯ 权限模式      工作区写入           ← 光标在此
+   工作目录      C:\Users\69215\Desktop
+   模型          DeepSeek-V4-Flash
+   显示思考过程  关
+   API Key      已配置
+   ▶ 开始对话
+↑↓ 选择 · Enter 确认 · 数字直接选 · q 返回
 ```
 
 ### 对话命令
@@ -45,51 +94,59 @@ dsh --profile cli   # 官方写法
 | 命令 | 作用 |
 |---|---|
 | `/config` | 打开配置向导 |
-| `/mode` | 切换权限模式（只读/工作区写入/完全访问） |
+| `/mode` | 切换权限模式（只读 / 工作区写入 / 完全访问） |
 | `/cd <路径>` | 切换工作目录 |
 | `/model` | 切换模型 |
-| `/think` | 显示思考过程 |
+| `/think` | 显示/隐藏思考过程 |
 | `/new` | 开启新会话 |
-| `/exit` | 退出（Ctrl+C / ESC 也可） |
+| `/exit` | 退出 |
 
 ### 按键
 
 | 按键 | 行为 |
 |---|---|
-| `↑` / `↓` + `Enter` | 菜单导航 |
-| `Ctrl+C`（回答中） | 中断回答 |
-| `Ctrl+C`（输入中） | 清空输入行 |
+| `↑` / `↓` + `Enter` | 菜单导航（方向键；不支持时自动降级数字输入） |
+| `Ctrl+C`（回答中） | 中断回答，立即回到提示符 |
+| `Ctrl+C`（输入中） | 清空当前输入行 |
 | `Ctrl+C`（空输入） | 退出 |
+| `Esc` | 同 `Ctrl+C` |
 | 多行粘贴 | 自动合并为一条消息 |
 
-## 目录结构
+---
+
+## 🧩 目录结构
 
 ```
 DeepSeek-CLI/
-├── README.md            # 本文档
 ├── install.cmd          # 一键安装脚本
-├── .gitignore
 ├── profiles/
-│   └── cli/             # dsh cli profile（复制到 $DSH_HOME/profiles/cli）
+│   └── cli/             # dsh cli profile
 │       ├── package.json
 │       ├── cordis.yml
 │       ├── cordis.patch.yml
 │       ├── pnpm-workspace.yaml
 │       └── cli-runner/
-│           └── index.js # 交互式 runner（核心）
-└── bin/                 # 启动命令（放到 PATH 目录）
-    ├── deepseek.cmd
-    ├── deepseek.ps1
-    ├── dsh-chat.cmd     # 兼容别名
-    └── dsh-ask.cmd      # 兼容别名（一次性问答）
+│           └── index.js # 交互式 runner（核心逻辑）
+└── bin/                 # 启动命令
+    ├── deepseek.cmd / .ps1
+    ├── dsh-chat.cmd / .ps1   # 兼容别名
+    └── dsh-ask.cmd / .ps1    # 一次性问答
 ```
 
-## 配置持久化
+---
 
-- 用户设置：`$DSH_HOME/cli-settings.json`（权限模式/工作目录/模型/思考显示）
-- API Key：`$DSH_HOME/.credentials.yaml`（与网页版共用，勿提交到仓库）
-- 会话历史：`$DSH_HOME/sessions/`
+## 🔒 配置与安全
 
-## 许可证
+- **API Key**：`$DSH_HOME/.credentials.yaml`（与 DeepSeek Harness 网页版共用；**已被 .gitignore 排除，不会提交**）
+- **用户设置**：`$DSH_HOME/cli-settings.json`（权限模式 / 工作目录 / 模型 / 思考显示，同样被排除）
+- **会话历史**：`$DSH_HOME/sessions/`，持久化保存，随时 `/new` 开启新会话
 
-MIT
+---
+
+## 📄 许可证
+
+[MIT](LICENSE)
+
+---
+
+<p align="center">Made with 🐋 by the DeepSeek community</p>
