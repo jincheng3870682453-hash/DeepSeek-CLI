@@ -4,6 +4,9 @@
 
 **命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
+> ⚠️ **非官方社区项目**：本工具由社区开发者独立构建，与 DeepSeek（深度求索）无关联、未经其认可或赞助。
+> *Unofficial community project — not affiliated with, endorsed by, or sponsored by DeepSeek.*
+
 **v1.3.1** 🎉
 
 [![Version](https://img.shields.io/badge/Version-1.3.1-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
@@ -72,6 +75,9 @@
 DeepSeek Harness（核心引擎）──► DeepSeek CLI（本仓库，纯终端层）
    Agent 循环 / 工具 / 沙箱            └─ cli-runner：readline 交互 + 配置向导 + 流式输出
 ```
+
+> 核心引擎 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 以 **MIT License** 开源（`Copyright (c) 2026 DeepSeek`），
+> 本项目的 `cli-runner/` 终端交互层为原创代码，整体以 [AGPL-3.0-or-later](LICENSE) 发布。
 
 ---
 
@@ -459,6 +465,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 - 🧭 **文档理顺**：前置条件改为"一行安装自动处理 DSH / 手动安装才需先装引擎"；新增「为什么做这个」（官方 Harness 只有 Web 缺终端 CLI）；CONTRIBUTING 新增"加一个新命令"实战示例（改哪个文件、跑哪个测试）
 - 🎨 **版面优化**：顶部 35 行鲸鱼 ASCII 艺术移至 [`assets/whale.txt`](assets/whale.txt)（终端启动画面不变），README 首屏更清爽
 - 📸 **真实终端截图**：演示章节新增 [`assets/demo-terminal.png`](assets/demo-terminal.png)（892×951，仅 20KB，加载快），动态 SVG 演示保留在下
+- ⚠️ **免责声明**：README 顶部新增中英双语"非官方社区项目"声明（与 DeepSeek 无关联、未经认可）；项目定位处标注 Harness 为 MIT（`Copyright (c) 2026 DeepSeek`），本仓库交互层原创、整体 AGPL 发布
 
 ### v1.3.0（2026-08）— 工程化重构
 
