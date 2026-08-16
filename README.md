@@ -293,6 +293,42 @@ Windows 与 Linux 行为一致。
 > **一句话**：`cordis.yml` 是"这台引擎装了什么插件"的装配清单（DSH 管）；`cli-settings.json` 是"我这个用户喜欢什么配置"的偏好文件（CLI 管）。
 > 想改 UI/行为 → 改 `cli-settings.json` 或运行向导；想改插件装配 → 才碰 `cordis.yml`。
 
+## 📋 日志与调试
+
+**① 运行中实时调试**（每回合结束自动打印耗时 / token / 工具调用）：
+
+```powershell
+deepseek --verbose        # 或 --debug（等价）
+```
+
+```
+[debug] 回合耗时 0.76s · prompt 97 tok · output 33 tok · cache-read 8192
+```
+
+**② DSH 引擎日志**（写在 `$DSH_HOME` 下，记录服务启动、端口、异常）：
+
+| 文件 | 内容 |
+|---|---|
+| `app-debug.log` | 引擎运行日志：服务启动、spawn pid、端口检查 |
+| `app-dsh-out.log` | 引擎标准输出（如 `dsh web: http://127.0.0.1:3080`） |
+| `app-dsh-err.log` | 引擎错误输出（出问题**优先看这个**） |
+
+cmd 查看：
+
+```cmd
+type %USERPROFILE%\.dsh\app-debug.log
+```
+
+PowerShell 实时滚动查看（新日志自动刷出，`Ctrl+C` 退出）：
+
+```powershell
+Get-Content $env:USERPROFILE\.dsh\app-debug.log -Tail 30 -Wait
+```
+
+**③ 会话记录**：每次对话的完整内容保存在 `$DSH_HOME\sessions\`（一个会话一个文件），随时可翻历史。
+
+> **故障排查顺序**：先 `deepseek --verbose` 看回合是否正常 → 引擎报错看 `app-dsh-err.log` → 启动异常看 `app-debug.log` 尾部。
+
 ## 🔒 配置与安全
 
 - **API Key**：`$DSH_HOME/.credentials.yaml`（与 DeepSeek Harness 网页版共用；**已被 .gitignore 排除，不会提交**）
@@ -327,6 +363,7 @@ Windows 与 Linux 行为一致。
 - 🧪 **测试 55 个用例**：新增 `test/menu.test.js`（光标移动/环绕、Enter/ESC/数字键、吞行恰好一次、非 TTY 行为）与 `test/commands.test.js`（`/mode read-only` → 命令对象、路径带空格、非命令返回 null）
 - 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）push/PR 自动跑测试，README 顶部实时绿勾
 - 📜 **开源协议 MIT → AGPL-3.0**：最强 copyleft——修改/分发/网络服务都必须开源全部衍生代码，防止"改两行拿去闭源卖钱"
+- 📖 **日志与调试文档**：新增「日志与调试」章节——`--verbose` 实时调试、`$DSH_HOME` 下引擎日志（`app-debug/out/err.log`）的 cmd/PowerShell 查看方法与故障排查顺序
 
 ### v1.3.0（2026-08）— 工程化重构
 
