@@ -1147,13 +1147,13 @@ async function run(ctx, config, io) {
 						io.stdout.write(`${c.green(t("effortSet", effortName(settings.effort)))}\n`);
 					} else if (advPick.value === "preset") {
 						const presets = ctx.get("agentPresets");
-						let items = [{ label: t("presetDefault"), value: "standard" }];
+						let items = [{ label: `${t("presetDefault")}  ${c.dim("standard")}`, value: "standard" }];
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
 								if (list.length > 0) {
 									items = list.map((p) => ({
-										label: `${p.id}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}${p.id === settings.preset ? `  ← ${t("curLabel")}` : ""}`,
+										label: `${p.name ?? p.id}${c.dim(`  ${p.id}`)}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}${p.id === settings.preset ? `  ← ${t("curLabel")}` : ""}`,
 										value: p.id
 									}));
 								}
@@ -1456,7 +1456,7 @@ async function run(ctx, config, io) {
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
-								list.forEach((p) => io.stdout.write(`  ${c.white(p.id)}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}\n`));
+								list.forEach((p) => io.stdout.write(`  ${c.white(p.name ?? p.id)}${c.dim(`  ${p.id}`)}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}\n`));
 							} catch {
 								// ignore
 							}
@@ -1743,7 +1743,7 @@ async function run(ctx, config, io) {
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
-								io.stdout.write(`${c.dim(t("allPresets", list.map((p) => p.id).join(" / ")))}\n`);
+								io.stdout.write(`${c.dim(t("allPresets", list.map((p) => `${p.name ?? p.id}${c.dim(`(${p.id})`)}`).join(" / ")))}\n`);
 							} catch {
 								// ignore
 							}
