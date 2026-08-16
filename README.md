@@ -79,14 +79,35 @@
 
 ---
 
+## 🎯 项目定位
+
+**纯命令行（纯后端）项目** — 无 Web 前端、无浏览器界面、无图形化 GUI。
+
+与官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 共享同一套核心引擎
+（Agent 循环、工具、沙箱、会话持久化），但只保留**终端交互层**：代码全部在这里
+（`profiles/cli/`），克隆仓库即可审查、修改、构建。
+
+```
+DeepSeek Harness（核心引擎）──► DeepSeek CLI（本仓库，纯终端层）
+   Agent 循环 / 工具 / 沙箱            └─ cli-runner：readline 交互 + 配置向导 + 流式输出
+```
+
+---
+
 ## 🚀 快速开始
 
-### 前置条件
+### 方式一：GitHub 拉取安装（推荐）
 
-- 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
-- DeepSeek API Key（首次运行自动引导配置）
+```powershell
+# 1. 克隆本仓库
+git clone https://github.com/jincheng3870682453-hash/DeepSeek-CLI.git
+cd DeepSeek-CLI
 
-### 安装
+# 2. 一键安装（复制 profile + 提示放置命令）
+install.cmd
+```
+
+### 方式二：手动
 
 ```bat
 :: 1. 复制 profile 到 DSH
@@ -95,7 +116,10 @@ xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 :: 2. 把 bin\deepseek.cmd / deepseek.ps1 放到 PATH 目录，新开终端
 ```
 
-或直接运行 `install.cmd`。
+### 前置条件
+
+- 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
+- DeepSeek API Key（首次运行自动引导配置）
 
 ### 使用
 
@@ -185,6 +209,11 @@ DeepSeek-CLI/
 ## 📄 许可证
 
 [MIT](LICENSE)
+
+## 🤝 贡献
+
+想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/index.js`。
+提交 PR 时请使用仓库内的 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)。
 
 ---
 
