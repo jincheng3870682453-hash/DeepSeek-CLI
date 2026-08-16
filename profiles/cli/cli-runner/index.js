@@ -16,7 +16,7 @@
 
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import z from "@deepseek-ai/schemastery";
@@ -295,6 +295,57 @@ function saveApiKey(key) {
 function maskKey(key) {
 	if (key.length <= 8) return "*".repeat(key.length);
 	return `${key.slice(0, 3)}${"*".repeat(6)}${key.slice(-4)}`;
+}
+
+/** $DSH_HOME (or its default). */
+function dshHome() {
+	return process.env.DSH_HOME ?? join(homedir(), ".dsh");
+}
+
+/** Directory where the user can drop custom skills (<name>/SKILL.md). */
+function customSkillDir() {
+	return join(dshHome(), "skills");
+}
+
+/** Directory where the user can drop custom agent presets (<id>/agent.cordis.yml). */
+function customPresetDir() {
+	return join(dshHome(), ".agent-presets");
+}
+
+/** Create a minimal SKILL.md template under the user skill root. */
+function createSkillTemplate(name) {
+	const dir = join(customSkillDir(), name);
+	if (existsSync(dir)) return { ok: false, message: `已存在：${dir}` };
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "SKILL.md"), `---
+name: ${name}
+description: 描述这个 skill 的用途（一行）
+---
+在这里编写 skill 的指令内容。模型调用此 skill 时会看到这里的内容。
+
+## 用法
+
+- 步骤一
+- 步骤二
+`, "utf8");
+	return { ok: true, path: dir };
+}
+
+/** List user-authored preset ids (directories holding agent.cordis.yml). */
+function listCustomPresets() {
+	try {
+		const root = customPresetDir();
+		if (!existsSync(root)) return [];
+		return readdirSync(root).filter((child) => {
+			try {
+				return statSync(join(root, child, "agent.cordis.yml")).isFile();
+			} catch {
+				return false;
+			}
+		});
+	} catch {
+		return [];
+	}
 }
 
 /** Expand a user-entered directory path. */
@@ -872,6 +923,8 @@ async function run(ctx, config, io) {
 						{ label: `${padCjk(t("advPreset"), 12)}${settings.preset}`, value: "preset" },
 						{ label: `${padCjk(t("advLang"), 14)}${langName(settings.language)}`, value: "language" },
 						{ label: `${padCjk(t("advBusy"), 12)}${busyName(settings.busyAction)}`, value: "busy" },
+						{ label: "自定义 Skill（目录 / 新建）", value: "custom-skill" },
+						{ label: "自定义 Agent 预设（目录 / 新建）", value: "custom-preset" },
 						{ label: t("advPlugins"), value: "plugins" },
 						{ label: t("advSkills"), value: "skills" }
 					]);
@@ -927,6 +980,45 @@ async function run(ctx, config, io) {
 						settings.busyAction = busyPick.value;
 						saveSettings(settings);
 						io.stdout.write(`${c.green(`✓ 繁忙时行为：${busyName(settings.busyAction)}`)}\n`);
+					} else if (advPick.value === "custom-skill") {
+						const custom = (() => {
+							try {
+								const dir = customSkillDir();
+								if (!existsSync(dir)) return [];
+								return readdirSync(dir).filter((child) => existsSync(join(dir, child, "SKILL.md")) || existsSync(join(dir, `${child}.md`)));
+							} catch {
+								return [];
+							}
+						})();
+						io.stdout.write(`${c.dim(`自定义 Skill 目录：${c.sky(customSkillDir())}`)}\n`);
+						io.stdout.write(`${c.dim(`格式：<名称>/SKILL.md（frontmatter 含 name 和 description）`)}\n`);
+						io.stdout.write(`${c.dim(`已有：${custom.length > 0 ? custom.join(", ") : "（无）"}  命令：/skills new <名称>`)}\n`);
+						const name = (await ask(c.dim("直接回车返回，或输入名称新建：")) ?? "").trim();
+						if (name !== "") {
+							const result = createSkillTemplate(name);
+							io.stdout.write(result.ok
+								? `${c.green(`✓ 已创建：${result.path}\\SKILL.md`)}${c.dim("  编辑后 /skills 可见")}\n`
+								: `${c.red(`✗ ${result.message}`)}\n`);
+						}
+					} else if (advPick.value === "custom-preset") {
+						const custom = listCustomPresets();
+						io.stdout.write(`${c.dim(`自定义预设目录：${c.sky(customPresetDir())}`)}\n`);
+						io.stdout.write(`${c.dim(`格式：<id>/agent.cordis.yml（可从现有预设复制修改）`)}\n`);
+						io.stdout.write(`${c.dim(`已有：${custom.length > 0 ? custom.join(", ") : "（无）"}  命令：/preset new <名称>`)}\n`);
+						const name = (await ask(c.dim("直接回车返回，或输入名称新建（复制 standard）：")) ?? "").trim();
+						if (name !== "") {
+							const presets = ctx.get("agentPresets");
+							if (presets !== void 0 && typeof presets.copy === "function") {
+								try {
+									await presets.copy("standard", name, name);
+									io.stdout.write(`${c.green(`✓ 已创建：${customPresetDir()}\\${name}\\agent.cordis.yml`)}${c.dim("  编辑后 /preset 可选")}\n`);
+								} catch (err) {
+									io.stdout.write(`${c.red(`✗ 创建失败：${err.message}`)}\n`);
+								}
+							} else {
+								io.stdout.write(`${c.red("✗ 预设服务不可用")}\n`);
+							}
+						}
 					} else if (advPick.value === "plugins") {
 						listPlugins();
 					} else if (advPick.value === "skills") {
@@ -1416,12 +1508,37 @@ async function run(ctx, config, io) {
 				}
 				case "preset": {
 					const presets = ctx.get("agentPresets");
+					if (rest[0] === "new") {
+						const name = (rest.slice(1).join("-") || (await ask(c.dim("新预设 id（kebab-case）：")) ?? "").trim()).trim();
+						if (name === "") {
+							io.stdout.write(`${c.red("✗ 需要名称，如：/preset new 我的助手")}\n`);
+							continue;
+						}
+						if (presets === void 0 || typeof presets.copy !== "function") {
+							io.stdout.write(`${c.red("✗ 预设服务不可用（无法自动创建）")}\n`);
+							continue;
+						}
+						try {
+							await presets.copy("standard", name, name);
+							io.stdout.write(`${c.green(`✓ 预设已创建（复制自 standard）：${customPresetDir()}\\${name}\\agent.cordis.yml`)}\n`);
+							io.stdout.write(`${c.dim("编辑后 /preset 立即可选，创建会话时生效")}\n`);
+						} catch (err) {
+							io.stdout.write(`${c.red(`✗ 创建失败：${err.message}`)}\n`);
+						}
+						continue;
+					}
 					if (arg === "") {
 						io.stdout.write(`${c.dim("当前 Agent 预设")} ${c.white(settings.preset)}\n`);
+						io.stdout.write(`${c.dim(`自定义预设目录：${c.sky(customPresetDir())}`)}\n`);
+						io.stdout.write(`${c.dim(`创建模板：/preset new <名称>`)}\n`);
+						const custom = listCustomPresets();
+						if (custom.length > 0) {
+							io.stdout.write(`${c.dim(`已有自定义预设：${custom.map((p) => c.white(p)).join(", ")}`)}\n`);
+						}
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
-								io.stdout.write(`${c.dim(`可选：${list.map((p) => p.id).join(" / ")}`)}\n`);
+								io.stdout.write(`${c.dim(`全部预设：${list.map((p) => p.id).join(" / ")}`)}\n`);
 							} catch {
 								// ignore
 							}
@@ -1476,7 +1593,24 @@ async function run(ctx, config, io) {
 					continue;
 				}
 				case "skills": {
+					if (rest[0] === "new") {
+						const name = (rest.slice(1).join("-") || (await ask(c.dim("新 skill 名称（kebab-case）：")) ?? "").trim()).trim();
+						if (name === "") {
+							io.stdout.write(`${c.red("✗ 需要名称，如：/skills new 我的助手")}\n`);
+							continue;
+						}
+						const result = createSkillTemplate(name);
+						if (result.ok) {
+							io.stdout.write(`${c.green(`✓ Skill 模板已创建：${result.path}\\SKILL.md`)}\n`);
+							io.stdout.write(`${c.dim("编辑后 /skills 立即可见，模型可调用")}\n`);
+						} else {
+							io.stdout.write(`${c.red(`✗ ${result.message}`)}\n`);
+						}
+						continue;
+					}
 					const skills = ctx.get("skills");
+					io.stdout.write(`${c.dim(`自定义 Skill 目录：${c.sky(customSkillDir())}`)}\n`);
+					io.stdout.write(`${c.dim(`创建模板：/skills new <名称>`)}\n`);
 					if (skills === void 0) {
 						io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
 						continue;
@@ -1484,7 +1618,7 @@ async function run(ctx, config, io) {
 					try {
 						const items = await skills.list({ cwd: settings.cwd });
 						if (items.length === 0) {
-							io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+							io.stdout.write(`${c.dim("没有可用 Skill（放一个到上面目录试试）")}\n`);
 							continue;
 						}
 						io.stdout.write(`${c.dim(`可用 Skill（${items.length}）：`)}\n`);
