@@ -224,18 +224,21 @@ function settingsPath() {
 
 function loadSettings() {
 	try {
-		const raw = JSON.parse(readFileSync(settingsPath(), "utf8"));
+		// Strip a possible UTF-8 BOM (PowerShell Out-File writes one, which
+		// would make JSON.parse throw and silently reset every setting).
+		const raw = readFileSync(settingsPath(), "utf8").replace(/^\uFEFF/, "");
+		const parsed = JSON.parse(raw);
 		return {
-			mode: typeof raw.mode === "string" ? raw.mode : "workspace-write",
-			cwd: typeof raw.cwd === "string" && existsSync(raw.cwd) ? raw.cwd : process.cwd(),
-			provider: typeof raw.provider === "string" ? raw.provider : "deepseek-official",
-			model: typeof raw.model === "string" ? raw.model : "deepseek-v4-flash",
-			showReasoning: raw.showReasoning === true,
-			effort: typeof raw.effort === "string" ? raw.effort : "high",
-			preset: typeof raw.preset === "string" ? raw.preset : "standard",
-			language: typeof raw.language === "string" ? raw.language : "zh",
-			busyAction: typeof raw.busyAction === "string" ? raw.busyAction : "queue",
-			cwdHistory: Array.isArray(raw.cwdHistory) ? raw.cwdHistory.filter((p) => typeof p === "string" && existsSync(p)).slice(0, 10) : []
+			mode: typeof parsed.mode === "string" ? parsed.mode : "workspace-write",
+			cwd: typeof parsed.cwd === "string" && existsSync(parsed.cwd) ? parsed.cwd : process.cwd(),
+			provider: typeof parsed.provider === "string" ? parsed.provider : "deepseek-official",
+			model: typeof parsed.model === "string" ? parsed.model : "deepseek-v4-flash",
+			showReasoning: parsed.showReasoning === true,
+			effort: typeof parsed.effort === "string" ? parsed.effort : "high",
+			preset: typeof parsed.preset === "string" ? parsed.preset : "standard",
+			language: typeof parsed.language === "string" ? parsed.language : "zh",
+			busyAction: typeof parsed.busyAction === "string" ? parsed.busyAction : "queue",
+			cwdHistory: Array.isArray(parsed.cwdHistory) ? parsed.cwdHistory.filter((p) => typeof p === "string" && existsSync(p)).slice(0, 10) : []
 		};
 	} catch {
 		return { mode: "workspace-write", cwd: process.cwd(), provider: "deepseek-official", model: "deepseek-v4-flash", showReasoning: false, effort: "high", preset: "standard", language: "zh", busyAction: "queue", cwdHistory: [] };
@@ -793,6 +796,17 @@ async function run(ctx, config, io) {
 					} catch {
 						// provider without a live adapter — skip its models
 					}
+				}
+				// Fallback: make sure the current provider's models are always
+				// listed even if the configurable-provider directory is empty.
+				if (models.length === 0) {
+					const ms = await llm.listModels(settings.provider);
+					models.push(...ms.map((m) => ({
+						provider: settings.provider,
+						providerName: settings.provider,
+						id: m.id,
+						name: m.name
+					})));
 				}
 			}
 		} catch {
