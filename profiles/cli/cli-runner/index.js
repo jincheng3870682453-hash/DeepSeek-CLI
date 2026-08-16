@@ -27,7 +27,7 @@ import { SessionId } from "@deepseek-ai/dsh-session";
 /** Stable Cordis plugin name. */
 const name = "cli-runner";
 /** The CLI's own semantic version, shown in the banner and README. */
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 /** Core services required before the interactive loop can start. */
 const inject = ["agentDefaultModel", "agents", "sessions", "llm", "permissionPresets", "agentPresets", "skills"];
 
@@ -615,6 +615,30 @@ async function run(ctx, config, io) {
 	const llm = ctx.get("llm");
 	const permissionPresets = ctx.get("permissionPresets");
 	if (agents === void 0 || defaultModel === void 0 || sessions === void 0) return;
+
+	// ---- launch arguments (from `dsh --profile cli --flag ...`) ----
+	const argv = ctx.get("cmdlineArgs")?.get?.() ?? [];
+	const opts = {
+		noInput: argv.includes("--no-input") || argv.includes("-n"),
+		verbose: argv.includes("--verbose") || argv.includes("--debug") || argv.includes("-v"),
+		autoFix: argv.includes("--auto-fix")
+	};
+	// --no-input: headless/scripted mode — skip the wizard entirely.
+	if (opts.noInput) config.showWizard = false;
+
+	// ---- proxy support: honor HTTP(S)_PROXY env automatically ----
+	// DeepSeek requests use the built-in undici fetch, which does not read
+	// proxy env vars by itself; install a global ProxyAgent when configured.
+	try {
+		const { ProxyAgent, setGlobalDispatcher } = await import("undici");
+		const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy;
+		if (ProxyAgent !== void 0 && setGlobalDispatcher !== void 0 && proxy) {
+			setGlobalDispatcher(new ProxyAgent(proxy));
+			if (opts.verbose) io.stderr.write(`[debug] 代理已启用: ${proxy}\n`);
+		}
+	} catch {
+		// proxy setup is best-effort
+	}
 
 	const tty = io.stdout.isTTY === true && io.stdin.isTTY === true;
 	const c = makePalette(tty);
@@ -1569,6 +1593,7 @@ async function run(ctx, config, io) {
 
 	async function submitTurn(text) {
 		busy = true;
+		const turnStart = Date.now();
 		try {
 			const firstSeq = agent.session.seq;
 			agent.followup(createUserMessage({
@@ -1580,6 +1605,26 @@ async function run(ctx, config, io) {
 			if (interrupted) {
 				io.stdout.write(`${c.dim(t("interrupted"))}\n`);
 				interrupted = false;
+			}
+			// ---- verbose diagnostics: turn timing + token usage ----
+			if (opts.verbose) {
+				const elapsedMs = Date.now() - turnStart;
+				let usage;
+				let toolCalls = 0;
+				for (const event of agent.session.events) {
+					if (event.seq < firstSeq) continue;
+					if (event.type === "assistant/message" && event.data.usage !== void 0) usage = event.data.usage;
+					if (event.type === "tool/call") toolCalls++;
+				}
+				const parts = [`回合耗时 ${(elapsedMs / 1000).toFixed(2)}s`];
+				if (usage !== void 0) {
+					parts.push(`prompt ${usage.promptTokens ?? usage.inputTokens ?? "?"} tok`);
+					parts.push(`output ${usage.outputTokens ?? "?"} tok`);
+					if (usage.cacheReadTokens) parts.push(`cache-read ${usage.cacheReadTokens}`);
+					if (usage.cacheWriteTokens) parts.push(`cache-write ${usage.cacheWriteTokens}`);
+				}
+				if (toolCalls > 0) parts.push(`工具 ${toolCalls} 次`);
+				io.stderr.write(`[debug] ${parts.join(" · ")}\n`);
 			}
 			let reason;
 			for (const event of agent.session.events) {
@@ -1738,6 +1783,10 @@ async function run(ctx, config, io) {
 						io.stdout.write(`${c.dim(t("currentPreset"))} ${c.white(settings.preset)}\n`);
 						io.stdout.write(`${c.dim(t("customPresetDirLabel", c.sky(customPresetDir())))}\n`);
 						io.stdout.write(`${c.dim(t("presetTemplateHint"))}\n`);
+						io.stdout.write(`${c.dim("示例结构（或 /preset new 复制 standard 起步）：")}\n`);
+						io.stdout.write(`${c.dim("  my-agent/")}\n`);
+						io.stdout.write(`${c.dim("  ├── agent.cordis.yml   # 自定义人设/工具")}\n`);
+						io.stdout.write(`${c.dim("  └── preset.yml         # 可选：name/description")}\n`);
 						const custom = listCustomPresets();
 						if (custom.length > 0) {
 							io.stdout.write(`${c.dim(t("customPresetsList", custom.map((p) => c.white(p)).join(", ")))}\n`);
@@ -1818,6 +1867,14 @@ async function run(ctx, config, io) {
 					const skills = ctx.get("skills");
 					io.stdout.write(`${c.dim(t("customSkillDirLabel", c.sky(customSkillDir())))}\n`);
 					io.stdout.write(`${c.dim(t("skillTemplateHint"))}\n`);
+					io.stdout.write(`${c.dim("示例结构：")}\n`);
+					io.stdout.write(`${c.dim("  my-skill/")}\n`);
+					io.stdout.write(`${c.dim("  └── SKILL.md")}\n`);
+					io.stdout.write(`${c.dim("      ---")}\n`);
+					io.stdout.write(`${c.dim("      name: my-skill")}\n`);
+					io.stdout.write(`${c.dim("      description: 一句话描述这个 skill")}\n`);
+					io.stdout.write(`${c.dim("      ---")}\n`);
+					io.stdout.write(`${c.dim("      在这里写 skill 的指令内容...")}\n`);
 					if (skills === void 0) {
 						io.stdout.write(`${c.dim(t("skillsUnavailable"))}\n`);
 						continue;
