@@ -24,6 +24,42 @@
 
 ---
 
+## 📑 目录
+
+> 👋 **新手上路**：没接触过？按这个顺序看——「[为什么做这个](#why)」→「[一行安装](#oneliner)」→「[开始使用](#usage)」→「[常见问题 FAQ](#faq)」，3 分钟上手。
+
+<details>
+<summary><b>📚 展开完整目录</b></summary>
+
+**🚀 开始**
+- [功能特性](#features)
+- [演示（截图）](#demo)
+- [为什么做这个](#why)
+- [快速开始](#quick-start)：[一行安装](#oneliner) · [手动安装](#install-manual) · [前置条件](#prerequisites) · [使用](#usage) · [启动参数](#cli-flags) · [环境变量](#env-vars)
+- [交互与命令](#interaction)（[配置向导](#wizard) · [对话命令](#commands) · [按键](#keys)）
+
+**🛠️ 进阶**
+- [目录结构](#structure)
+- [跨平台支持](#platforms)
+- [两种配置，各司其职](#config-formats)
+- [日志与调试](#logging)
+- [自定义 Skill](#skills)
+- [自定义 Agent 预设](#presets)
+- [会话管理](#sessions)
+- [卸载与清理](#uninstall)
+- [配置与安全](#security)
+- [常见问题 FAQ](#faq)
+
+**🧭 其他**
+- [许可证](#license)
+- [贡献](#contributing)
+- [版本历史](#changelog)
+
+</details>
+
+---
+
+<a id="features"></a>
 ## ✨ 功能特性
 
 | | | |
@@ -41,6 +77,7 @@
 
 ---
 
+<a id="demo"></a>
 ## 🎬 演示
 
 **真实终端运行画面**（点击图片可查看大图）：
@@ -57,6 +94,7 @@
 
 ## 🎯 项目定位
 
+<a id="why"></a>
 ### 为什么做这个？
 
 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供的是 **Web 界面**（浏览器里配置模型、管理会话），但**缺少终端 CLI**——想不开浏览器、直接在一个 SSH 会话 / 服务器 / 终端窗口里用 DeepSeek Agent，就没有趁手的工具。
@@ -81,8 +119,10 @@ DeepSeek Harness（核心引擎）──► DeepSeek CLI（本仓库，纯终端
 
 ---
 
+<a id="quick-start"></a>
 ## 🚀 快速开始
 
+<a id="oneliner"></a>
 ### ⚡ 一行安装（推荐 · 零依赖）
 
 **连 Node.js 都不用装**——脚本会自动检测，缺什么自动下载（便携 Node → DSH 引擎 → 本仓库 → profile → 命令），一条命令全搞定。
@@ -103,6 +143,7 @@ irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/maste
 > 装完新开终端输入 `deepseek` 即可，首次运行引导配置 API Key。
 > 若下载失败（网络问题），改用下面的仓库安装方式。
 
+<a id="install-manual"></a>
 ### 方式一：GitHub 拉取安装
 
 ```powershell
@@ -123,6 +164,7 @@ xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 :: 2. 把 bin\deepseek.cmd / deepseek.ps1 放到 PATH 目录，新开终端
 ```
 
+<a id="prerequisites"></a>
 ### 前置条件
 
 - **一行安装（推荐）**：什么都不用装——脚本自动检测并下载 Node.js、安装 DSH 引擎、拉取本仓库、装 profile、装命令，一条命令全搞定（见上方「⚡ 一行安装」）。
@@ -137,6 +179,7 @@ xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 > `npm install -g @deepseek-ai/dsh@0.1.0-rc.6`。
 > 手工安装的用户也可随时用 `dsh --version` 自查。
 
+<a id="usage"></a>
 ### 使用
 
 ```powershell
@@ -145,6 +188,7 @@ deepseek            # 启动（等同 dsh --profile cli）
 
 首次运行会引导配置 API Key；之后进入配置向导，`↑↓` 选择后 `Enter` 确认即可开始对话。
 
+<a id="scripting"></a>
 ### 🤖 脚本化 / 自动化
 
 ```powershell
@@ -160,6 +204,7 @@ export HTTPS_PROXY=http://proxy.internal:8080
 deepseek
 ```
 
+<a id="cli-flags"></a>
 ### 🚀 启动参数
 
 | 参数 | 作用 |
@@ -174,6 +219,7 @@ deepseek --verbose
 tail -f app.log | deepseek --no-input -v "发现异常就总结"
 ```
 
+<a id="env-vars"></a>
 ### 🌐 环境变量
 
 | 变量 | 作用 |
@@ -184,8 +230,10 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 
 ---
 
+<a id="interaction"></a>
 ## 🎮 交互
 
+<a id="wizard"></a>
 ### 配置向导
 
 ```
@@ -199,6 +247,7 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 ↑↓ 选择 · Enter 确认 · 数字直接选 · q 返回
 ```
 
+<a id="commands"></a>
 ### 对话命令
 
 | 命令 | 语法 | 说明 |
@@ -218,6 +267,7 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 | `/help` | `/help`（或 `/h`） | 显示帮助 |
 | `/exit` | `/exit`（或 `/quit` / `/q`） | 退出（`Ctrl+C` 空输入也行） |
 
+<a id="keys"></a>
 ### 按键
 
 | 按键 | 行为 |
@@ -231,6 +281,7 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 
 ---
 
+<a id="structure"></a>
 ## 🧩 目录结构
 
 ```
@@ -279,6 +330,7 @@ DeepSeek-CLI/
 
 ---
 
+<a id="platforms"></a>
 ## 💻 跨平台支持
 
 | 平台 | 支持 | 启动 |
@@ -309,6 +361,7 @@ Windows 与 Linux 行为一致。
 
 ---
 
+<a id="config-formats"></a>
 ## 🗂️ 两种配置，各司其职
 
 本项目有两类配置文件，**职责完全不同，别搞混**：
@@ -321,6 +374,7 @@ Windows 与 Linux 行为一致。
 > **一句话**：`cordis.yml` 是"这台引擎装了什么插件"的装配清单（DSH 管）；`cli-settings.json` 是"我这个用户喜欢什么配置"的偏好文件（CLI 管）。
 > 想改 UI/行为 → 改 `cli-settings.json` 或运行向导；想改插件装配 → 才碰 `cordis.yml`。
 
+<a id="logging"></a>
 ## 📋 日志与调试
 
 **① 运行中实时调试**（每回合结束自动打印耗时 / token / 工具调用）：
@@ -357,6 +411,7 @@ Get-Content $env:USERPROFILE\.dsh\app-debug.log -Tail 30 -Wait
 
 > **故障排查顺序**：先 `deepseek --verbose` 看回合是否正常 → 引擎报错看 `app-dsh-err.log` → 启动异常看 `app-debug.log` 尾部。
 
+<a id="skills"></a>
 ## 🧩 自定义 Skill
 
 Skill = 给 Agent 的"技能说明书"。放一个目录即可，**不用改代码**：
@@ -385,6 +440,7 @@ description: 描述这个 skill 的用途（一行）
 在这里编写 skill 的指令内容。模型调用此 skill 时会看到这里的内容。
 ```
 
+<a id="presets"></a>
 ## 🤖 自定义 Agent 预设
 
 预设 = 人设 + 工具组合。放 `$DSH_HOME/.agent-presets/<id>/agent.cordis.yml`：
@@ -404,6 +460,7 @@ deepseek
 /preset my-agent     # 切换到你的预设
 ```
 
+<a id="sessions"></a>
 ## 💬 会话管理
 
 | 操作 | 方法 |
@@ -412,6 +469,7 @@ deepseek
 | 查看历史会话 | `dir %USERPROFILE%\.dsh\sessions`（PowerShell：`Get-ChildItem $env:USERPROFILE\.dsh\sessions`） |
 | 清空全部历史 | `del %USERPROFILE%\.dsh\sessions\*`（PowerShell：`Remove-Item $env:USERPROFILE\.dsh\sessions\* -Recurse -Force`） |
 
+<a id="uninstall"></a>
 ## 🗑️ 卸载与清理
 
 ```powershell
@@ -427,6 +485,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 # ⚠️ 第 3 步会连 API Key（.credentials.yaml）一起删，确定不要了再执行
 ```
 
+<a id="security"></a>
 ## 🔒 配置与安全
 
 - **API Key**：`$DSH_HOME/.credentials.yaml`（与 DeepSeek Harness 网页版共用；**已被 .gitignore 排除，不会提交**）
@@ -435,6 +494,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 
 ---
 
+<a id="faq"></a>
 ## ❓ 常见问题（FAQ）
 
 <details>
@@ -546,6 +606,7 @@ DeepSeek API 按账号限流。处理：
 
 </details>
 
+<a id="license"></a>
 ## 📄 许可证
 
 本项目采用 **GNU Affero General Public License v3 或更高版本（AGPL-3.0-or-later）**：[LICENSE](LICENSE)
@@ -557,6 +618,7 @@ DeepSeek API 按账号限流。处理：
 > - ⚠️ 要求：任何修改/衍生作品必须同样以 AGPL 开源；通过网络提供服务的也要开放对应源码（第 13 条）
 > - ❌ 禁止：闭源分发、闭源商用衍生品、增加额外限制条款
 
+<a id="contributing"></a>
 ## 🤝 贡献
 
 想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/`（`index.js` / `utils.js` / `config.js` / `menu.js` / `commands.js`），纯函数改完跑 `npm test`。
@@ -564,6 +626,7 @@ DeepSeek API 按账号限流。处理：
 
 ---
 
+<a id="changelog"></a>
 ## 🏷️ 版本历史
 
 ### v1.3.1（2026-08）— 再拆一层 + CI 绿勾 + AGPL 协议
@@ -578,6 +641,7 @@ DeepSeek API 按账号限流。处理：
 - 📸 **真实终端截图**：演示章节新增 [`assets/demo-terminal.png`](assets/demo-terminal.png)（892×951，仅 20KB，加载快），动态 SVG 演示保留在下
 - ⚠️ **免责声明**：README 顶部新增中英双语"非官方社区项目"声明（与 DeepSeek 无关联、未经认可）；项目定位处标注 Harness 为 MIT（`Copyright (c) 2026 DeepSeek`），本仓库交互层原创、整体 AGPL 发布
 - ❓ **常见问题（FAQ）**：新增 9 条高频痛点问答（`<details>` 折叠）——API Key 申请/更换、代理设置与故障、WSL 中文乱码、权限不足、退出卡住、更新方法、数据备份搬家、429 限流、命令无反应
+- 📑 **目录导航**：新增「📑 目录」章节——顶部"新手上路"3 步快捷路径 + 折叠完整目录（28 个显式锚点，中文标题跳转 100% 可用）
 
 ### v1.3.0（2026-08）— 工程化重构
 
