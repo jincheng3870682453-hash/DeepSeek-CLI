@@ -7,6 +7,7 @@
 **v1.3.0** 🎉
 
 [![Version](https://img.shields.io/badge/Version-1.3.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Tests](https://img.shields.io/github/actions/workflow/status/jincheng3870682453-hash/DeepSeek-CLI/test.yml?branch=master&label=Tests&logo=vitest&logoColor=white&color=4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -239,7 +240,9 @@ DeepSeek-CLI/
 │       └── cli-runner/
 │           ├── index.js  # 交互式 runner（菜单 / 命令 / 会话）
 │           ├── utils.js  # i18n 字典、CJK 宽度、路径/目录辅助
-│           └── config.js # 设置与凭据读写（cli-settings.json / .credentials.yaml）
+│           ├── config.js # 设置与凭据读写（cli-settings.json / .credentials.yaml）
+│           ├── menu.js   # 方向键菜单控制器（渲染 + 导航状态机）
+│           └── commands.js # 命令解析纯函数（输入 → {cmd, arg, rest}）
 └── bin/                 # 启动命令
     ├── deepseek.cmd / .ps1 / (bash)  # 主命令
     ├── dsh-chat.cmd / .ps1   # 兼容别名
@@ -313,8 +316,9 @@ Windows 与 Linux 行为一致。
 
 ### v1.3.0（2026-08）— 工程化重构
 
-- 📦 **代码拆文件**：`cli-runner/index.js` 从 1955 行拆为 `index.js`（交互/菜单/会话）+ `utils.js`（i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助）+ `config.js`（设置与凭据读写），职责分明
-- 🧪 **单元测试**：引入 vitest，`test/utils.test.js` + `test/config.test.js` 共 35 个用例，覆盖 i18n 占位替换、CJK 显示宽度、密钥脱敏、路径展开、设置 BOM/损坏容错、凭据读写等纯函数；`npm test` 一键运行
+- 📦 **代码拆文件**：`cli-runner/index.js` 从 1955 行拆为 `index.js`（交互/会话/命令执行）+ `utils.js`（i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助）+ `config.js`（设置与凭据读写）；再拆出 `menu.js`（方向键菜单控制器，可独立测试）与 `commands.js`（命令解析纯函数）
+- 🧪 **单元测试**：vitest 共 **55 个用例**（`utils` 25 + `config` 10 + `commands` 10 + `menu` 10），覆盖 i18n 占位替换、CJK 显示宽度、密钥脱敏、路径展开、设置 BOM/损坏容错、凭据读写、命令解析（`/mode read-only` → 命令对象）、菜单导航（↑↓/Enter/ESC/数字键/吞行）；`npm test` 一键运行
+- 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）每次 push/PR 自动跑测试，README 顶部实时显示绿勾
 - 🛡️ **DSH 版本标注**：README 标明基于 `@deepseek-ai/dsh` 0.1.x（`0.1.0-rc.6`）开发验证；`install-oneliner.sh/.ps1` 安装时自动校验 `dsh --version` 主版本并提示匹配版本
 - 🗂️ **配置格式说明**：README 新增「两种配置，各司其职」——`cordis.yml` 是 DSH 引擎装配清单（不能改格式），`cli-settings.json` 是 CLI 用户偏好（随便改）
 

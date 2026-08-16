@@ -8,13 +8,15 @@
 ```
 profiles/cli/
 ├── cli-runner/
-│   ├── index.js   # 交互入口：readline、配置向导、流式输出、会话与命令
+│   ├── index.js   # 交互入口：readline、配置向导、流式输出、会话与命令执行
 │   ├── utils.js   # 纯函数：i18n 字典、CJK 显示宽度、路径/目录、skill/preset 模板
-│   └── config.js  # 持久化：cli-settings.json（用户偏好）与 .credentials.yaml（API Key）
+│   ├── config.js  # 持久化：cli-settings.json（用户偏好）与 .credentials.yaml（API Key）
+│   ├── menu.js    # 方向键菜单控制器（渲染 + 导航状态机，onKey 驱动，可单测）
+│   └── commands.js # 命令解析纯函数（parseCommand：输入字符串 → {cmd, arg, rest}）
 ├── cordis.patch.yml      # profile 补丁：挂载插件（agent-presets、code-runtime、cli-runner）
 ├── package.json          # profile 定义
 └── README.md
-test/                     # 单元测试（vitest）：utils.test.js / config.test.js
+test/                     # 单元测试（vitest）：utils / config / commands / menu
 bin/                      # 启动命令（deepseek / dsh-chat / dsh-ask 的 cmd + ps1）
 tools/gen-demo-svg.mjs    # README 演示图生成脚本
 ```
@@ -24,10 +26,10 @@ tools/gen-demo-svg.mjs    # README 演示图生成脚本
 1. 安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（提供 `dsh` 命令）
 2. 把本仓库的 `profiles/cli` 链接或复制到 `%USERPROFILE%\.dsh\profiles\cli`
 3. 运行 `deepseek`（或 `dsh --profile cli`）调试
-4. 改完跑测试：`npm install` 后 `npm test`（vitest，35 个用例覆盖 utils/config 纯函数）
+4. 改完跑测试：`npm install` 后 `npm test`（vitest，55 个用例覆盖 utils/config/commands/menu 纯函数与菜单状态机；push 后 GitHub Actions 自动再跑一遍）
 
 > 修改 `cli-runner/` 下的文件后，若它以绝对路径被 profile 引用，改动即时生效（无需重装）。
-> **注意**：`.dsh` 是运行环境、仓库是发布源——改完必须把改动**从 `.dsh` 同步回仓库**（反之会覆盖丢代码）。
+> **注意**：`.dsh` 是运行环境、仓库是发布源——改完必须把改动同步回仓库（反之会覆盖丢代码）。
 
 ## 规范
 

@@ -42,6 +42,8 @@ import {
 	apiKeyConfigured,
 	saveApiKey
 } from "./config.js";
+import { makePalette, createMenuController } from "./menu.js";
+import { parseCommand } from "./commands.js";
 
 /** Stable Cordis plugin name. */
 const name = "cli-runner";
@@ -66,19 +68,6 @@ const internals = {
 	stdin: process.stdin,
 	stdout: process.stdout,
 	stderr: process.stderr
-};
-
-/** DeepSeek brand palette (truecolor; safe on Windows Terminal / VS Code / Win10+ conhost). */
-const PALETTE = {
-	blue: "\x1b[38;2;77;107;254m",
-	sky: "\x1b[38;2;110;180;255m",
-	cyan: "\x1b[38;2;90;200;250m",
-	white: "\x1b[38;2;232;237;255m",
-	dim: "\x1b[38;2;130;142;170m",
-	green: "\x1b[38;2;95;220;160m",
-	yellow: "\x1b[38;2;235;200;120m",
-	red: "\x1b[38;2;255;120;120m",
-	reset: "\x1b[0m"
 };
 
 /**
@@ -154,21 +143,6 @@ async function playIntro(io, c, rows) {
 	io.stdout.write("\x1b[?25h");
 }
 
-/** Color helpers — no-op when not a TTY. */
-function makePalette(tty) {
-	const wrap = (code) => (tty ? (text) => `${code}${text}${PALETTE.reset}` : (text) => text);
-	return {
-		blue: wrap(PALETTE.blue),
-		sky: wrap(PALETTE.sky),
-		cyan: wrap(PALETTE.cyan),
-		white: wrap(PALETTE.white),
-		dim: wrap(PALETTE.dim),
-		green: wrap(PALETTE.green),
-		yellow: wrap(PALETTE.yellow),
-		red: wrap(PALETTE.red)
-	};
-}
-
 /** Report an unexpected failure and request a failing exit. */
 function fail(io, error) {
 	io.stderr.write(`dsh: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -234,17 +208,11 @@ async function run(ctx, config, io) {
 	let closed = false;
 	let exiting = false;
 	let busy = false;
-	let menuActive = false;
-	let swallowLines = false;
+	let secretMode = false; // askSecret() owns the keypress stream while active
 
 	const settle = (line) => {
-		if (menuActive && tty) return; // menu mode swallows typed lines
-		if (swallowLines && tty && line !== null) {
-			// The Enter that confirmed a menu choice also emits a 'line'
-			// event; drop it so it cannot be consumed as the next choice.
-			swallowLines = false;
-			return;
-		}
+		if (menu.isOpen() && tty) return; // menu mode swallows typed lines
+		if (menu.consumeLine(line)) return; // drop the Enter that confirmed a menu choice
 		if (waiter !== null) {
 			const w = waiter;
 			waiter = null;
@@ -308,14 +276,9 @@ async function run(ctx, config, io) {
 	});
 
 	// ---- arrow-key menu -------------------------------------------------------
-	// State for one open menu. pickFromMenu() opens it; keypress drives it.
-	let menuTitle = "";
-	let menuOptions = [];
-	let menuCursor = 0;
-	let menuResolve = null;
-	let menuLines = 0;
-	/** askSecret() owns the keypress stream while active. */
-	let secretMode = false;
+	// One menu controller instance for the whole session; the wizard opens
+	// pickers with menu.pick() and the keypress handler forwards keys to it.
+	const menu = createMenuController(io, c, t, tty);
 
 	/** Hidden single-line input (API keys): echoes asterisks; null on ESC. */
 	const askSecret = (prompt) => new Promise((resolve) => {
@@ -325,7 +288,6 @@ async function run(ctx, config, io) {
 			return;
 		}
 		secretMode = true;
-		menuActive = true; // swallow 'line' events during secret input
 		let buf = "";
 		const redraw = () => {
 			io.stdout.write(`\r\x1b[K${c.dim(prompt)}${c.white("*".repeat(buf.length))}`);
@@ -333,7 +295,6 @@ async function run(ctx, config, io) {
 		const cleanup = () => {
 			rl.input.removeListener("keypress", onKey);
 			secretMode = false;
-			menuActive = false;
 		};
 		const onKey = (str, key) => {
 			if (key.name === "return" || key.name === "enter") {
@@ -356,75 +317,10 @@ async function run(ctx, config, io) {
 		redraw();
 	});
 
-	const buildMenuLines = () => {
-		const lines = [];
-		if (menuTitle !== "") lines.push(c.white(menuTitle));
-		for (const opt of menuOptions) {
-			const selected = menuOptions.indexOf(opt) === menuCursor;
-			const arrow = selected ? c.cyan("❯") : c.dim(" ");
-			lines.push(` ${arrow} ${opt.label}`);
-		}
-		lines.push(c.dim(t("navHint")));
-		return lines;
-	};
-	const clearMenuArea = () => {
-		if (menuLines > 0) {
-			io.stdout.write(`\x1b[${menuLines}A\r`);
-			for (let i = 0; i < menuLines; i++) io.stdout.write("\x1b[K\n");
-			io.stdout.write(`\x1b[${menuLines}A\r`);
-			menuLines = 0;
-		}
-	};
-	const drawMenu = () => {
-		clearMenuArea();
-		const lines = buildMenuLines();
-		menuLines = lines.length;
-		for (const line of lines) io.stdout.write(line + "\n");
-	};
-	const redrawMenu = () => drawMenu();
-
-	/** Open a VT menu; resolves to the picked option or null on cancel. */
-	const pickFromMenu = (title, options) => new Promise((resolve) => {
-		menuTitle = title;
-		menuOptions = options;
-		menuCursor = 0;
-		menuResolve = resolve;
-		menuActive = true;
-		drawMenu();
-	});
-	/** Close the open menu, clearing its area; returns the picked option. */
-	const closeMenu = (picked) => {
-		const resolve = menuResolve;
-		menuResolve = null;
-		menuActive = false;
-		clearMenuArea();
-		if (resolve !== null) resolve(picked);
-	};
-
 	rl.input.on("keypress", (str, key) => {
 		if (key === void 0) return;
 		if (secretMode) return; // askSecret() owns the stream
-		if (menuResolve !== null) {
-			// --- menu navigation ---
-			if (key.name === "up") {
-				menuCursor = (menuCursor - 1 + menuOptions.length) % menuOptions.length;
-				redrawMenu();
-			} else if (key.name === "down") {
-				menuCursor = (menuCursor + 1) % menuOptions.length;
-				redrawMenu();
-			} else if (key.name === "return" || key.name === "enter") {
-				// Enter also emits a 'line' event right after; drop it so it
-				// cannot be consumed as the next input.
-				swallowLines = true;
-				closeMenu(menuOptions[menuCursor] ?? null);
-			} else if (key.name === "escape" || key.name === "q") {
-				closeMenu(null);
-			} else if (str !== void 0 && /^[1-9]$/.test(str)) {
-				const idx = Number(str) - 1;
-				if (menuOptions[idx] !== void 0) closeMenu(menuOptions[idx]);
-			}
-			return; // consume every key while a menu is open
-		}
+		if (menu.onKey(str, key)) return; // menu open: navigation consumes keys
 		// --- busy mode: interrupt-on-input (when configured) ---
 		if (busy && settings.busyAction === "interrupt") {
 			interruptTurn();
@@ -445,9 +341,9 @@ async function run(ctx, config, io) {
 
 	rl.on("SIGINT", () => {
 		if (exiting) return;
-		if (menuResolve !== null) {
+		if (menu.isOpen()) {
 			// Ctrl+C while configuring: quit.
-			closeMenu(null);
+			menu.close(null);
 			exiting = true;
 			settle(null);
 			return;
@@ -707,7 +603,7 @@ async function run(ctx, config, io) {
 			};
 
 			while (true) {
-				const mainPick = await pickFromMenu(t("menuTitle"), [
+				const mainPick = await menu.pick(t("menuTitle"), [
 					{ label: `${padCjk(t("menuMode"), 12)}${modeName(settings.mode)}`, value: "mode" },
 					{ label: `${padCjk(t("menuCwd"), 12)}${settings.cwd}`, value: "cwd" },
 					{ label: `${padCjk(t("menuModel"), 14)}${modelLabel(settings.model)} (${settings.model})`, value: "model" },
@@ -724,7 +620,7 @@ async function run(ctx, config, io) {
 				if (mainPick.value === "start") return settings;
 
 				if (mainPick.value === "advanced") {
-					const advPick = await pickFromMenu(t("advTitle"), [
+					const advPick = await menu.pick(t("advTitle"), [
 						{ label: `${padCjk(t("advEffort"), 12)}${effortName(settings.effort)}`, value: "effort" },
 						{ label: `${padCjk(t("advPreset"), 12)}${settings.preset}`, value: "preset" },
 						{ label: `${padCjk(t("advLang"), 14)}${langName(settings.language)}`, value: "language" },
@@ -736,7 +632,7 @@ async function run(ctx, config, io) {
 					]);
 					if (advPick === null) continue;
 					if (advPick.value === "effort") {
-						const effPick = await pickFromMenu(t("effortTitle"), [
+						const effPick = await menu.pick(t("effortTitle"), [
 							{ label: `${padCjk(t("effortOff"), 12)}${t("effortOffDesc")}`, value: "off" },
 							{ label: `${padCjk(t("effortHigh"), 12)}${t("effortHighDesc")}`, value: "high" },
 							{ label: `${padCjk(t("effortMax"), 12)}${t("effortMaxDesc")}`, value: "max" }
@@ -761,14 +657,14 @@ async function run(ctx, config, io) {
 								// fall back to default list
 							}
 						}
-						const presetPick = await pickFromMenu(t("presetTitle"), items);
+						const presetPick = await menu.pick(t("presetTitle"), items);
 						if (presetPick === null) continue;
 						settings.preset = presetPick.value;
 						saveSettings(settings);
 						await rebuildAgent();
 						io.stdout.write(`${c.green(t("presetSet", settings.preset))}${c.dim(t("newSessionHint"))}\n`);
 					} else if (advPick.value === "language") {
-						const langPick = await pickFromMenu(t("langTitle"), [
+						const langPick = await menu.pick(t("langTitle"), [
 							{ label: "中文（简体）", value: "zh" },
 							{ label: "English", value: "en" }
 						]);
@@ -778,7 +674,7 @@ async function run(ctx, config, io) {
 						saveSettings(settings);
 						io.stdout.write(`${c.green(t("langSet", langName(settings.language)))}\n`);
 					} else if (advPick.value === "busy") {
-						const busyPick = await pickFromMenu(t("busyTitle"), [
+						const busyPick = await menu.pick(t("busyTitle"), [
 							{ label: `${padCjk(t("busyQueue"), 12)}${t("busyQueueDesc")}`, value: "queue" },
 							{ label: `${padCjk(t("busyInterrupt"), 12)}${t("busyInterruptDesc")}`, value: "interrupt" }
 						]);
@@ -834,7 +730,7 @@ async function run(ctx, config, io) {
 				}
 
 				if (mainPick.value === "mode") {
-					const modePick = await pickFromMenu(t("modeTitle"), availableModes.map((m) => ({
+					const modePick = await menu.pick(t("modeTitle"), availableModes.map((m) => ({
 						label: `${padCjk(modeName(m), 12)}${c.dim(m)}${modeDesc(m) ? c.dim(`  ${modeDesc(m)}`) : ""}`,
 						value: m
 					})));
@@ -850,7 +746,7 @@ async function run(ctx, config, io) {
 						}
 					}
 				} else if (mainPick.value === "cwd") {
-					const cwdPick = await pickFromMenu(t("cwdTitle"), [
+					const cwdPick = await menu.pick(t("cwdTitle"), [
 						{ label: t("cwdUseCurrent", process.cwd()), value: process.cwd() },
 						...settings.cwdHistory.filter((p) => p !== process.cwd()).map((p) => ({
 							label: `${p}${p === settings.cwd ? `  ← ${t("curLabel")}` : ""}`,
@@ -888,7 +784,7 @@ async function run(ctx, config, io) {
 						io.stdout.write(`${c.red(t("modelListUnavailable"))}\n`);
 						continue;
 					}
-					const modelPick = await pickFromMenu(t("modelTitle"), models.map((m) => ({
+					const modelPick = await menu.pick(t("modelTitle"), models.map((m) => ({
 						label: `${m.name}  ${c.dim(`${m.id}`)}${c.dim(`  [${m.providerName}]`)}${m.provider === settings.provider && m.id === settings.model ? c.dim(`  ← ${t("curLabel")}`) : ""}`,
 						value: m
 					})));
@@ -1222,8 +1118,9 @@ async function run(ctx, config, io) {
 		if (text === "") continue;
 
 		if (text.startsWith("/")) {
-			const [cmd, ...rest] = text.slice(1).split(/\s+/);
-			const arg = rest.join(" ").trim();
+			const parsed = parseCommand(text);
+			if (parsed === null) continue;
+			const { cmd, arg, rest } = parsed;
 			switch (cmd) {
 				case "exit":
 				case "quit":
