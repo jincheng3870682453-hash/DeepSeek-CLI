@@ -96,7 +96,27 @@ DeepSeek Harness（核心引擎）──► DeepSeek CLI（本仓库，纯终端
 
 ## 🚀 快速开始
 
-### 方式一：GitHub 拉取安装（推荐）
+### ⚡ 一行安装（推荐）
+
+自动完成：装 DSH 引擎（如缺）→ 拉取仓库 → 装 profile → 装 `deepseek` 命令。
+
+**macOS / Linux / WSL**（终端里粘贴执行）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.sh | bash
+```
+
+**Windows**（PowerShell 里粘贴执行）：
+
+```powershell
+irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.ps1 | iex
+```
+
+> 需要已装 Node.js（[nodejs.org](https://nodejs.org)）。装完新开终端输入 `deepseek` 即可，
+> 首次运行会引导配置 API Key。
+> 若 `raw.githubusercontent.com` 下载失败（网络问题），改用下面的仓库安装方式。
+
+### 方式一：GitHub 拉取安装
 
 ```powershell
 # 1. 克隆本仓库
