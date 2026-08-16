@@ -135,20 +135,7 @@ async function playIntro(io, c, rows) {
 	io.stdout.write("\x1b[?25h");
 }
 
-const HELP = `
-${"─".repeat(46)}
-  /config  打开配置向导      /mode   切换权限模式
-  /cd      切换工作目录      /model  切换模型
-  /think   显示思考过程      /effort 思考强度
-  /preset  Agent 预设        /lang   语言
-  /busy    繁忙时行为        /plugins 插件列表
-  /skills  Skill 列表        /new    开启新会话
-  /exit    退出（Ctrl+C 也可）
-${"─".repeat(46)}
-  直接输入任意文字即可对话 · 同一会话会记住上下文
-`;
-
-/** UI strings for the two supported languages (core surfaces). */
+/** UI strings for the two supported languages. Values may use {0}/{1} placeholders. */
 const I18N = {
 	zh: {
 		bannerSub: "DeepSeek Harness · 交互式命令行 · v0.1.0-rc.6",
@@ -168,12 +155,117 @@ const I18N = {
 		advBusy: "繁忙时行为",
 		advPlugins: "插件列表（只读）",
 		advSkills: "Skill 列表（只读）",
+		advCustomSkill: "自定义 Skill（目录 / 新建）",
+		advCustomPreset: "自定义 Agent 预设（目录 / 新建）",
 		navHint: "↑↓ 选择 · Enter 确认 · 数字直接选 · q 返回",
 		curLabel: "当前",
 		on: "开",
 		off: "关",
 		configured: "已配置",
-		notConfigured: "未配置"
+		notConfigured: "未配置",
+		none: "（无）",
+		vtFallback: "（当前终端未响应光标控制，已使用数字输入菜单；推荐 Windows Terminal / VS Code 体验方向键）",
+		firstRun: "首次使用：需要先配置 API Key 才能对话",
+		askKey: "请输入 DeepSeek API Key（sk-...）：",
+		askKeyEsc: "请输入 DeepSeek API Key（sk-...，ESC 取消）：",
+		askKeyEnter: "请输入 DeepSeek API Key（sk-...，直接回车取消）：",
+		keySaved: "✓ API Key 已保存（{0}）",
+		keyBad: "✗ Key 格式不正确（应以 sk- 开头）",
+		keyBadHint: "，可重跑 dsh-chat 重新配置",
+		keySkipped: "已跳过；之后可用 /config 重新配置",
+		cancelled: "已取消",
+		effortOff: "关闭",
+		effortHigh: "深度思考",
+		effortMax: "极致思考",
+		effortOffDesc: "快速响应（不思考）",
+		effortHighDesc: "high（默认，质量更好）",
+		effortMaxDesc: "max（最强但最慢）",
+		effortTitle: "思考强度",
+		effortSet: "✓ 思考强度：{0}",
+		presetTitle: "Agent 预设",
+		presetDefault: "standard（默认）",
+		presetBroken: "（损坏：{0}）",
+		presetSet: "✓ Agent 预设：{0}",
+		langTitle: "语言 / Language",
+		langSet: "✓ 语言：{0}",
+		busyTitle: "繁忙时行为（AI 回答中发消息）",
+		busyQueue: "排队发送",
+		busyQueueDesc: "回答完成后依次处理",
+		busyInterrupt: "打断当前回答",
+		busyInterruptDesc: "立即中断并处理新消息",
+		busySet: "✓ 繁忙时行为：{0}",
+		customSkillDirLabel: "自定义 Skill 目录：{0}",
+		customSkillFormat: "格式：<名称>/SKILL.md（frontmatter 含 name 和 description）",
+		customSkillHas: "已有：{0}  命令：/skills new <名称>",
+		customSkillAsk: "直接回车返回，或输入名称新建：",
+		customSkillCreated: "✓ 已创建：{0}\\SKILL.md",
+		customSkillCreatedHint: "  编辑后 /skills 可见",
+		customPresetDirLabel: "自定义预设目录：{0}",
+		customPresetFormat: "格式：<id>/agent.cordis.yml（可从现有预设复制修改）",
+		customPresetHas: "已有：{0}  命令：/preset new <名称>",
+		customPresetAsk: "直接回车返回，或输入名称新建（复制 standard）：",
+		customPresetCreated: "✓ 已创建：{0}\\agent.cordis.yml",
+		customPresetCreatedHint: "  编辑后 /preset 可选",
+		createFailed: "✗ 创建失败：{0}",
+		presetUnavailable: "✗ 预设服务不可用",
+		modeTitle: "是否允许工作区之外的操作？",
+		modeSet: "✓ 权限模式：{0}",
+		cwdTitle: "工作目录（是否在此目录工作？）",
+		cwdUseCurrent: "使用当前目录：{0}",
+		cwdInput: "✎ 输入新路径…",
+		cwdInputPrompt: "输入路径（支持 ~）：",
+		cwdSet: "✓ 工作目录：{0}",
+		cwdNotExist: "✗ 目录不存在：{0}",
+		modelTitle: "模型",
+		modelListUnavailable: "模型列表不可用",
+		modelSet: "✓ 模型：{0} ({1})",
+		thinkSet: "✓ 显示思考过程：{0}",
+		wizardPrompt: "选择 1-7，回车直接开始对话：",
+		selectNum: "选择编号：",
+		newSessionHint: "（已开启新会话）",
+		newSessionLine: "—— 已开启新会话 ——",
+		interrupted: "（已中断）",
+		unknownCmd: "未知命令：/{0}",
+		unknownCmdHint: "（输入 /help 查看命令列表）",
+		currentMode: "当前权限模式",
+		modeOptional: "可选：{0}",
+		unknownMode: "✗ 未知模式：{0}",
+		currentCwd: "当前工作目录",
+		cdUsage: "用法：/cd <路径>",
+		currentModel: "当前模型",
+		modelUsage: "用法：/model <模型id>，或 /model list 查看列表",
+		currentEffort: "当前思考强度",
+		effortOptional: "（可选：off / high / max）",
+		unknownEffort: "✗ 未知强度：{0}",
+		presetNeedName: "✗ 需要名称，如：/preset new 我的助手",
+		presetNoService: "✗ 预设服务不可用（无法自动创建）",
+		presetCreated: "✓ 预设已创建（复制自 standard）：{0}\\agent.cordis.yml",
+		presetCreatedHint: "编辑后 /preset 立即可选，创建会话时生效",
+		currentPreset: "当前 Agent 预设",
+		presetTemplateHint: "创建模板：/preset new <名称>",
+		customPresetsList: "已有自定义预设：{0}",
+		allPresets: "全部预设：{0}",
+		currentLang: "当前语言",
+		unknownLang: "✗ 未知语言：{0}",
+		langOptional: "（可选：zh / en）",
+		currentBusy: "繁忙时行为",
+		busyOptional: "（可选：queue / interrupt）",
+		unknownBusy: "✗ 未知：{0}",
+		pluginsUnavailable: "插件列表不可用",
+		loadedPlugins: "已加载插件（{0}）：",
+		skillNeedName: "✗ 需要名称，如：/skills new 我的助手",
+		skillCreated: "✓ Skill 模板已创建：{0}\\SKILL.md",
+		skillCreatedHint: "编辑后 /skills 立即可见，模型可调用",
+		skillTemplateHint: "创建模板：/skills new <名称>",
+		skillsUnavailable: "Skill 服务不可用",
+		noSkillsHint: "没有可用 Skill（放一个到上面目录试试）",
+		availableSkills: "可用 Skill（{0}）：",
+		skillsListUnavailable: "Skill 列表不可用",
+		noSkills: "没有可用 Skill",
+		availableSkillsColon: "可用 Skill：",
+		toolName: "工具",
+		advancedTitle: "高级设置：",
+		help: `\n${"─".repeat(46)}\n  /config  打开配置向导      /mode   切换权限模式\n  /cd      切换工作目录      /model  切换模型\n  /think   显示思考过程      /effort 思考强度\n  /preset  Agent 预设        /lang   语言\n  /busy    繁忙时行为        /plugins 插件列表\n  /skills  Skill 列表        /new    开启新会话\n  /exit    退出（Ctrl+C 也可）\n${"─".repeat(46)}\n  直接输入任意文字即可对话 · 同一会话会记住上下文\n`
 	},
 	en: {
 		bannerSub: "DeepSeek Harness · Interactive CLI · v0.1.0-rc.6",
@@ -193,28 +285,137 @@ const I18N = {
 		advBusy: "When Busy",
 		advPlugins: "Plugins (read-only)",
 		advSkills: "Skills (read-only)",
+		advCustomSkill: "Custom Skills (dir / new)",
+		advCustomPreset: "Custom Agent Presets (dir / new)",
 		navHint: "↑↓ select · Enter confirm · digits direct · q back",
 		curLabel: "current",
 		on: "on",
 		off: "off",
 		configured: "configured",
-		notConfigured: "not set"
+		notConfigured: "not set",
+		none: "—",
+		vtFallback: "(Terminal did not respond to cursor control; using numbered input. Try Windows Terminal / VS Code for arrow keys)",
+		firstRun: "First run: configure your API Key to start chatting",
+		askKey: "Enter DeepSeek API Key (sk-...): ",
+		askKeyEsc: "Enter DeepSeek API Key (sk-...; ESC cancels): ",
+		askKeyEnter: "Enter DeepSeek API Key (sk-...; Enter cancels): ",
+		keySaved: "✓ API Key saved ({0})",
+		keyBad: "✗ Invalid key format (should start with sk-)",
+		keyBadHint: "; rerun deepseek to reconfigure",
+		keySkipped: "Skipped; reconfigure later with /config",
+		cancelled: "Cancelled",
+		effortOff: "Off",
+		effortHigh: "Deep",
+		effortMax: "Max",
+		effortOffDesc: "Fast response (no thinking)",
+		effortHighDesc: "high (default, better quality)",
+		effortMaxDesc: "max (strongest, slowest)",
+		effortTitle: "Reasoning Effort",
+		effortSet: "✓ Reasoning effort: {0}",
+		presetTitle: "Agent Preset",
+		presetDefault: "standard (default)",
+		presetBroken: "(broken: {0})",
+		presetSet: "✓ Agent preset: {0}",
+		langTitle: "Language",
+		langSet: "✓ Language: {0}",
+		busyTitle: "When Busy (message while AI is replying)",
+		busyQueue: "Queue",
+		busyQueueDesc: "Process after the reply finishes",
+		busyInterrupt: "Interrupt",
+		busyInterruptDesc: "Stop the reply now and handle the new message",
+		busySet: "✓ When busy: {0}",
+		customSkillDirLabel: "Custom skill dir: {0}",
+		customSkillFormat: "Format: <name>/SKILL.md (frontmatter with name and description)",
+		customSkillHas: "Existing: {0}   command: /skills new <name>",
+		customSkillAsk: "Enter to go back, or type a name to create: ",
+		customSkillCreated: "✓ Created: {0}\\SKILL.md",
+		customSkillCreatedHint: "   visible in /skills after editing",
+		customPresetDirLabel: "Custom preset dir: {0}",
+		customPresetFormat: "Format: <id>/agent.cordis.yml (copy an existing preset to start)",
+		customPresetHas: "Existing: {0}   command: /preset new <name>",
+		customPresetAsk: "Enter to go back, or type a name to create (copies standard): ",
+		customPresetCreated: "✓ Created: {0}\\agent.cordis.yml",
+		customPresetCreatedHint: "   selectable in /preset after editing",
+		createFailed: "✗ Create failed: {0}",
+		presetUnavailable: "✗ Preset service unavailable",
+		modeTitle: "Allow operations outside the workspace?",
+		modeSet: "✓ Permission mode: {0}",
+		cwdTitle: "Working directory (work here?)",
+		cwdUseCurrent: "Use current dir: {0}",
+		cwdInput: "✎ Enter a new path…",
+		cwdInputPrompt: "Enter path (supports ~): ",
+		cwdSet: "✓ Working directory: {0}",
+		cwdNotExist: "✗ Directory not found: {0}",
+		modelTitle: "Model",
+		modelListUnavailable: "Model list unavailable",
+		modelSet: "✓ Model: {0} ({1})",
+		thinkSet: "✓ Show reasoning: {0}",
+		wizardPrompt: "Pick 1-7, Enter to start: ",
+		selectNum: "Pick a number: ",
+		newSessionHint: " (new session started)",
+		newSessionLine: "—— new session started ——",
+		interrupted: "(interrupted)",
+		unknownCmd: "Unknown command: /{0}",
+		unknownCmdHint: " (type /help for commands)",
+		currentMode: "Current permission",
+		modeOptional: "Options: {0}",
+		unknownMode: "✗ Unknown mode: {0}",
+		currentCwd: "Current working directory",
+		cdUsage: "Usage: /cd <path>",
+		currentModel: "Current model",
+		modelUsage: "Usage: /model <id>, or /model list",
+		currentEffort: "Current reasoning effort",
+		effortOptional: " (options: off / high / max)",
+		unknownEffort: "✗ Unknown effort: {0}",
+		presetNeedName: "✗ A name is required, e.g. /preset new my-agent",
+		presetNoService: "✗ Preset service unavailable (cannot auto-create)",
+		presetCreated: "✓ Preset created (copied from standard): {0}\\agent.cordis.yml",
+		presetCreatedHint: " selectable in /preset immediately; applies to new sessions",
+		currentPreset: "Current agent preset",
+		presetTemplateHint: "Create a template: /preset new <name>",
+		customPresetsList: "Existing custom presets: {0}",
+		allPresets: "All presets: {0}",
+		currentLang: "Current language",
+		unknownLang: "✗ Unknown language: {0}",
+		langOptional: " (options: zh / en)",
+		currentBusy: "When busy",
+		busyOptional: " (options: queue / interrupt)",
+		unknownBusy: "✗ Unknown: {0}",
+		pluginsUnavailable: "Plugin list unavailable",
+		loadedPlugins: "Loaded plugins ({0}):",
+		skillNeedName: "✗ A name is required, e.g. /skills new my-skill",
+		skillCreated: "✓ Skill template created: {0}\\SKILL.md",
+		skillCreatedHint: " visible in /skills after editing; model can invoke it",
+		skillTemplateHint: "Create a template: /skills new <name>",
+		skillsUnavailable: "Skills service unavailable",
+		noSkillsHint: "No skills available (drop one into the dir above)",
+		availableSkills: "Available skills ({0}):",
+		skillsListUnavailable: "Skills list unavailable",
+		noSkills: "No skills available",
+		availableSkillsColon: "Available skills:",
+		toolName: "tool",
+		advancedTitle: "Advanced:",
+		help: `\n${"─".repeat(46)}\n  /config  open config wizard    /mode   switch permission\n  /cd      switch working dir   /model  switch model\n  /think   show reasoning       /effort reasoning effort\n  /preset  agent preset         /lang   language\n  /busy    when-busy behavior   /plugins plugin list\n  /skills  skill list           /new    new session\n  /exit    quit (Ctrl+C too)\n${"─".repeat(46)}\n  Type any text to chat · context is kept within a session\n`
 	}
 };
 
 function makeT(language) {
 	const dict = I18N[language] ?? I18N.zh;
-	return (key) => dict[key] ?? I18N.zh[key] ?? key;
+	return (key, ...args) => {
+		let s = dict[key] ?? I18N.zh[key] ?? key;
+		args.forEach((a, i) => {
+			s = s.split(`{${i}}`).join(String(a));
+		});
+		return s;
+	};
 }
 
 /** Localized labels for the permission presets (internal values stay English). */
 const MODE_LABELS = {
-	"read-only": { name: "只读", desc: "只能读取，不能修改文件" },
-	"workspace-write": { name: "工作区写入", desc: "可读写工作区内文件，更大范围操作需确认" },
-	"danger-full-access": { name: "完全访问", desc: "全权限操作，不再询问" }
+	"read-only": { zh: "只读", en: "Read-only", zhDesc: "只能读取，不能修改文件", enDesc: "Read only, no file changes" },
+	"workspace-write": { zh: "工作区写入", en: "Workspace Write", zhDesc: "可读写工作区内文件，更大范围操作需确认", enDesc: "Read/write inside the workspace; wider actions ask first" },
+	"danger-full-access": { zh: "完全访问", en: "Full Access", zhDesc: "全权限操作，不再询问", enDesc: "Full access, no prompts" }
 };
-const modeName = (m) => MODE_LABELS[m]?.name ?? m;
-const modeDesc = (m) => MODE_LABELS[m]?.desc ?? "";
 
 /** Settings persistence under $DSH_HOME (the CLI owns its own store; web-only services are not present here). */
 function settingsPath() {
@@ -363,9 +564,10 @@ function displayWidth(text) {
 	return w;
 }
 
-/** Pad a string to a display width with spaces (CJK-aware, unlike padEnd). */
+/** Pad a string to a display width with spaces (CJK-aware, unlike padEnd).
+ * Always leaves at least one gap so a label and its value never touch. */
 function padCjk(text, width) {
-	return text + " ".repeat(Math.max(0, width - displayWidth(text)));
+	return text + " ".repeat(Math.max(1, width - displayWidth(text)));
 }
 
 function isDirectory(p) {
@@ -417,6 +619,13 @@ async function run(ctx, config, io) {
 
 	let settings = loadSettings();
 	let t = makeT(settings.language);
+	/** Language-aware labels for permission presets. */
+	const modeName = (m) => MODE_LABELS[m]?.[settings.language === "en" ? "en" : "zh"] ?? m;
+	const modeDesc = (m) => MODE_LABELS[m]?.[settings.language === "en" ? "enDesc" : "zhDesc"] ?? "";
+	/** Language-aware option labels used by the wizard and commands. */
+	const effortName = (e) => ({ off: t("effortOff"), high: t("effortHigh"), max: t("effortMax") })[e] ?? e;
+	const langName = (l) => (l === "zh" ? "中文" : "English");
+	const busyName = (b) => (b === "queue" ? t("busyQueue") : t("busyInterrupt"));
 
 	// ---- input queue -------------------------------------------------------
 	const rl = createInterface({ input: io.stdin, output: io.stdout });
@@ -808,22 +1017,22 @@ async function run(ctx, config, io) {
 	// Probe for ANSI cursor control before the wizard (TTY only).
 	if (tty) vt = await probeVt();
 	if (tty && !vt) {
-		io.stdout.write(`${c.dim("（当前终端未响应光标控制，已使用数字输入菜单；推荐 Windows Terminal / VS Code 体验方向键）")}\n`);
+		io.stdout.write(`${c.dim(t("vtFallback"))}\n`);
 	}
 
 	// ---- first-run: API key ---------------------------------------------------
 	if (!apiKeyConfigured()) {
-		io.stdout.write(`\n${c.yellow("首次使用：需要先配置 API Key 才能对话")}\n`);
-		const key = await askSecret("请输入 DeepSeek API Key（sk-...）：");
+		io.stdout.write(`\n${c.yellow(t("firstRun"))}\n`);
+		const key = await askSecret(t("askKey"));
 		if (key !== null && key.trim() !== "") {
 			if (key.trim().startsWith("sk-")) {
 				saveApiKey(key.trim());
-				io.stdout.write(`${c.green(`✓ API Key 已保存（${maskKey(key.trim())}）`)}\n`);
+				io.stdout.write(`${c.green(t("keySaved", maskKey(key.trim())))}\n`);
 			} else {
-				io.stdout.write(`${c.red("✗ Key 格式不正确（应以 sk- 开头）")}${c.dim("，可重跑 dsh-chat 重新配置")}\n`);
+				io.stdout.write(`${c.red(t("keyBad"))}${c.dim(t("keyBadHint"))}\n`);
 			}
 		} else {
-			io.stdout.write(`${c.dim("已跳过；之后可用 /config 重新配置")}\n`);
+			io.stdout.write(`${c.dim(t("keySkipped"))}\n`);
 		}
 	}
 
@@ -868,35 +1077,32 @@ async function run(ctx, config, io) {
 
 		// -------- arrow-key wizard (VT terminals) --------
 		if (vt) {
-			const effortName = (e) => ({ off: "关闭（快速）", high: "深度思考", max: "极致思考" })[e] ?? e;
-			const langName = (l) => (l === "zh" ? "中文" : "English");
-			const busyName = (b) => (b === "queue" ? "排队发送" : "打断当前回答");
 			const listPlugins = () => {
 				const loader = ctx.get("loader");
 				if (loader === void 0 || typeof loader.entries !== "function") {
-					io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+					io.stdout.write(`${c.dim(t("pluginsUnavailable"))}\n`);
 					return;
 				}
 				const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
-				io.stdout.write(`${c.dim("已加载插件：")}\n`);
+				io.stdout.write(`${c.dim(t("loadedPlugins", names.length))}\n`);
 				names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
 			};
 			const listSkills = async () => {
 				const skills = ctx.get("skills");
 				if (skills === void 0) {
-					io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+					io.stdout.write(`${c.dim(t("skillsUnavailable"))}\n`);
 					return;
 				}
 				try {
 					const items = await skills.list({ cwd: settings.cwd });
 					if (items.length === 0) {
-						io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+						io.stdout.write(`${c.dim(t("noSkills"))}\n`);
 						return;
 					}
-					io.stdout.write(`${c.dim("可用 Skill：")}\n`);
+					io.stdout.write(`${c.dim(t("availableSkillsColon"))}\n`);
 					items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
 				} catch {
-					io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+					io.stdout.write(`${c.dim(t("skillsListUnavailable"))}\n`);
 				}
 			};
 
@@ -923,31 +1129,31 @@ async function run(ctx, config, io) {
 						{ label: `${padCjk(t("advPreset"), 12)}${settings.preset}`, value: "preset" },
 						{ label: `${padCjk(t("advLang"), 14)}${langName(settings.language)}`, value: "language" },
 						{ label: `${padCjk(t("advBusy"), 12)}${busyName(settings.busyAction)}`, value: "busy" },
-						{ label: "自定义 Skill（目录 / 新建）", value: "custom-skill" },
-						{ label: "自定义 Agent 预设（目录 / 新建）", value: "custom-preset" },
+						{ label: t("advCustomSkill"), value: "custom-skill" },
+						{ label: t("advCustomPreset"), value: "custom-preset" },
 						{ label: t("advPlugins"), value: "plugins" },
 						{ label: t("advSkills"), value: "skills" }
 					]);
 					if (advPick === null) continue;
 					if (advPick.value === "effort") {
-						const effPick = await pickFromMenu("思考强度", [
-							{ label: `${padCjk("关闭", 12)}快速响应（不思考）`, value: "off" },
-							{ label: `${padCjk("深度思考", 12)}high（默认，质量更好）`, value: "high" },
-							{ label: `${padCjk("极致思考", 12)}max（最强但最慢）`, value: "max" }
+						const effPick = await pickFromMenu(t("effortTitle"), [
+							{ label: `${padCjk(t("effortOff"), 12)}${t("effortOffDesc")}`, value: "off" },
+							{ label: `${padCjk(t("effortHigh"), 12)}${t("effortHighDesc")}`, value: "high" },
+							{ label: `${padCjk(t("effortMax"), 12)}${t("effortMaxDesc")}`, value: "max" }
 						]);
 						if (effPick === null) continue;
 						settings.effort = effPick.value;
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 思考强度：${effortName(settings.effort)}`)}\n`);
+						io.stdout.write(`${c.green(t("effortSet", effortName(settings.effort)))}\n`);
 					} else if (advPick.value === "preset") {
 						const presets = ctx.get("agentPresets");
-						let items = [{ label: "standard（默认）", value: "standard" }];
+						let items = [{ label: t("presetDefault"), value: "standard" }];
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
 								if (list.length > 0) {
 									items = list.map((p) => ({
-										label: `${p.id}${p.broken !== void 0 ? c.red(`  （损坏：${p.broken}）`) : ""}${p.id === settings.preset ? "  ← 当前" : ""}`,
+										label: `${p.id}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}${p.id === settings.preset ? `  ← ${t("curLabel")}` : ""}`,
 										value: p.id
 									}));
 								}
@@ -955,14 +1161,14 @@ async function run(ctx, config, io) {
 								// fall back to default list
 							}
 						}
-						const presetPick = await pickFromMenu("Agent 预设", items);
+						const presetPick = await pickFromMenu(t("presetTitle"), items);
 						if (presetPick === null) continue;
 						settings.preset = presetPick.value;
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ Agent 预设：${settings.preset}`)}${c.dim("（已开启新会话）")}\n`);
+						io.stdout.write(`${c.green(t("presetSet", settings.preset))}${c.dim(t("newSessionHint"))}\n`);
 					} else if (advPick.value === "language") {
-						const langPick = await pickFromMenu("语言 / Language", [
+						const langPick = await pickFromMenu(t("langTitle"), [
 							{ label: "中文（简体）", value: "zh" },
 							{ label: "English", value: "en" }
 						]);
@@ -970,16 +1176,16 @@ async function run(ctx, config, io) {
 						settings.language = langPick.value;
 						t = makeT(settings.language);
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 语言：${langName(settings.language)}`)}\n`);
+						io.stdout.write(`${c.green(t("langSet", langName(settings.language)))}\n`);
 					} else if (advPick.value === "busy") {
-						const busyPick = await pickFromMenu("繁忙时行为（AI 回答中发消息）", [
-							{ label: `${padCjk("排队发送", 12)}回答完成后依次处理`, value: "queue" },
-							{ label: `${padCjk("打断当前回答", 12)}立即中断并处理新消息`, value: "interrupt" }
+						const busyPick = await pickFromMenu(t("busyTitle"), [
+							{ label: `${padCjk(t("busyQueue"), 12)}${t("busyQueueDesc")}`, value: "queue" },
+							{ label: `${padCjk(t("busyInterrupt"), 12)}${t("busyInterruptDesc")}`, value: "interrupt" }
 						]);
 						if (busyPick === null) continue;
 						settings.busyAction = busyPick.value;
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 繁忙时行为：${busyName(settings.busyAction)}`)}\n`);
+						io.stdout.write(`${c.green(t("busySet", busyName(settings.busyAction)))}\n`);
 					} else if (advPick.value === "custom-skill") {
 						const custom = (() => {
 							try {
@@ -990,33 +1196,33 @@ async function run(ctx, config, io) {
 								return [];
 							}
 						})();
-						io.stdout.write(`${c.dim(`自定义 Skill 目录：${c.sky(customSkillDir())}`)}\n`);
-						io.stdout.write(`${c.dim(`格式：<名称>/SKILL.md（frontmatter 含 name 和 description）`)}\n`);
-						io.stdout.write(`${c.dim(`已有：${custom.length > 0 ? custom.join(", ") : "（无）"}  命令：/skills new <名称>`)}\n`);
-						const name = (await ask(c.dim("直接回车返回，或输入名称新建：")) ?? "").trim();
+						io.stdout.write(`${c.dim(t("customSkillDirLabel", c.sky(customSkillDir())))}\n`);
+						io.stdout.write(`${c.dim(t("customSkillFormat"))}\n`);
+						io.stdout.write(`${c.dim(t("customSkillHas", custom.length > 0 ? custom.join(", ") : t("none")))}\n`);
+						const name = (await ask(c.dim(t("customSkillAsk"))) ?? "").trim();
 						if (name !== "") {
 							const result = createSkillTemplate(name);
 							io.stdout.write(result.ok
-								? `${c.green(`✓ 已创建：${result.path}\\SKILL.md`)}${c.dim("  编辑后 /skills 可见")}\n`
+								? `${c.green(t("customSkillCreated", result.path))}${c.dim(t("customSkillCreatedHint"))}\n`
 								: `${c.red(`✗ ${result.message}`)}\n`);
 						}
 					} else if (advPick.value === "custom-preset") {
 						const custom = listCustomPresets();
-						io.stdout.write(`${c.dim(`自定义预设目录：${c.sky(customPresetDir())}`)}\n`);
-						io.stdout.write(`${c.dim(`格式：<id>/agent.cordis.yml（可从现有预设复制修改）`)}\n`);
-						io.stdout.write(`${c.dim(`已有：${custom.length > 0 ? custom.join(", ") : "（无）"}  命令：/preset new <名称>`)}\n`);
-						const name = (await ask(c.dim("直接回车返回，或输入名称新建（复制 standard）：")) ?? "").trim();
+						io.stdout.write(`${c.dim(t("customPresetDirLabel", c.sky(customPresetDir())))}\n`);
+						io.stdout.write(`${c.dim(t("customPresetFormat"))}\n`);
+						io.stdout.write(`${c.dim(t("customPresetHas", custom.length > 0 ? custom.join(", ") : t("none")))}\n`);
+						const name = (await ask(c.dim(t("customPresetAsk"))) ?? "").trim();
 						if (name !== "") {
 							const presets = ctx.get("agentPresets");
 							if (presets !== void 0 && typeof presets.copy === "function") {
 								try {
 									await presets.copy("standard", name, name);
-									io.stdout.write(`${c.green(`✓ 已创建：${customPresetDir()}\\${name}\\agent.cordis.yml`)}${c.dim("  编辑后 /preset 可选")}\n`);
+									io.stdout.write(`${c.green(t("customPresetCreated", customPresetDir() + "\\" + name))}${c.dim(t("customPresetCreatedHint"))}\n`);
 								} catch (err) {
-									io.stdout.write(`${c.red(`✗ 创建失败：${err.message}`)}\n`);
+									io.stdout.write(`${c.red(t("createFailed", err.message))}\n`);
 								}
 							} else {
-								io.stdout.write(`${c.red("✗ 预设服务不可用")}\n`);
+								io.stdout.write(`${c.red(t("presetUnavailable"))}\n`);
 							}
 						}
 					} else if (advPick.value === "plugins") {
@@ -1028,14 +1234,14 @@ async function run(ctx, config, io) {
 				}
 
 				if (mainPick.value === "mode") {
-					const modePick = await pickFromMenu("是否允许工作区之外的操作？", availableModes.map((m) => ({
+					const modePick = await pickFromMenu(t("modeTitle"), availableModes.map((m) => ({
 						label: `${padCjk(modeName(m), 12)}${c.dim(m)}${modeDesc(m) ? c.dim(`  ${modeDesc(m)}`) : ""}`,
 						value: m
 					})));
 					if (modePick === null) continue;
 					settings.mode = modePick.value;
 					saveSettings(settings);
-					io.stdout.write(`${c.green(`✓ 权限模式：${modeName(settings.mode)}`)}${c.dim(`（${settings.mode}）`)}\n`);
+					io.stdout.write(`${c.green(t("modeSet", modeName(settings.mode)))}${c.dim(`（${settings.mode}）`)}\n`);
 					if (agent !== void 0 && agent !== null && permissionPresets !== void 0) {
 						try {
 							permissionPresets.set(agent.session, settings.mode);
@@ -1044,18 +1250,18 @@ async function run(ctx, config, io) {
 						}
 					}
 				} else if (mainPick.value === "cwd") {
-					const cwdPick = await pickFromMenu("工作目录（是否在此目录工作？）", [
-						{ label: `使用当前目录：${process.cwd()}`, value: process.cwd() },
+					const cwdPick = await pickFromMenu(t("cwdTitle"), [
+						{ label: t("cwdUseCurrent", process.cwd()), value: process.cwd() },
 						...settings.cwdHistory.filter((p) => p !== process.cwd()).map((p) => ({
-							label: `${p}${p === settings.cwd ? "  ← 当前" : ""}`,
+							label: `${p}${p === settings.cwd ? `  ← ${t("curLabel")}` : ""}`,
 							value: p
 						})),
-						{ label: "✎ 输入新路径…", value: "__input__" }
+						{ label: t("cwdInput"), value: "__input__" }
 					]);
 					if (cwdPick === null) continue;
 					let target;
 					if (cwdPick.value === "__input__") {
-						io.stdout.write(c.dim("输入路径（支持 ~）："));
+						io.stdout.write(c.dim(t("cwdInputPrompt")));
 						const raw = await nextLine();
 						if (raw === null) {
 							exiting = true;
@@ -1072,18 +1278,18 @@ async function run(ctx, config, io) {
 							settings.cwdHistory = [target, ...settings.cwdHistory.filter((p) => p !== target)].slice(0, 10);
 							saveSettings(settings);
 							await rebuildAgent();
-							io.stdout.write(`${c.green(`✓ 工作目录：${settings.cwd}`)}\n`);
+							io.stdout.write(`${c.green(t("cwdSet", settings.cwd))}\n`);
 						}
 					} else {
-						io.stdout.write(`${c.red(`✗ 目录不存在：${target}`)}\n`);
+						io.stdout.write(`${c.red(t("cwdNotExist", target))}\n`);
 					}
 				} else if (mainPick.value === "model") {
 					if (models.length === 0) {
-						io.stdout.write(`${c.red("模型列表不可用")}\n`);
+						io.stdout.write(`${c.red(t("modelListUnavailable"))}\n`);
 						continue;
 					}
-					const modelPick = await pickFromMenu("模型", models.map((m) => ({
-						label: `${m.name}  ${c.dim(`${m.id}`)}${c.dim(`  [${m.providerName}]`)}${m.provider === settings.provider && m.id === settings.model ? c.dim("  ← 当前") : ""}`,
+					const modelPick = await pickFromMenu(t("modelTitle"), models.map((m) => ({
+						label: `${m.name}  ${c.dim(`${m.id}`)}${c.dim(`  [${m.providerName}]`)}${m.provider === settings.provider && m.id === settings.model ? c.dim(`  ← ${t("curLabel")}`) : ""}`,
 						value: m
 					})));
 					if (modelPick === null) continue;
@@ -1093,23 +1299,23 @@ async function run(ctx, config, io) {
 						settings.provider = next.provider;
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ 模型：${next.name} (${next.id})`)}${c.dim(`  [${next.providerName}]`)}\n`);
+						io.stdout.write(`${c.green(t("modelSet", next.name, next.id))}${c.dim(`  [${next.providerName}]`)}\n`);
 					}
 				} else if (mainPick.value === "think") {
 					settings.showReasoning = !settings.showReasoning;
 					saveSettings(settings);
-					io.stdout.write(`${c.green(`✓ 显示思考过程：${settings.showReasoning ? "开" : "关"}`)}\n`);
+					io.stdout.write(`${c.green(t("thinkSet", settings.showReasoning ? t("on") : t("off")))}\n`);
 				} else if (mainPick.value === "apikey") {
-					const key = await askSecret("请输入 DeepSeek API Key（sk-...，ESC 取消）：");
+					const key = await askSecret(t("askKeyEsc"));
 					if (key !== null && key.trim() !== "") {
 						if (key.trim().startsWith("sk-")) {
 							saveApiKey(key.trim());
-							io.stdout.write(`${c.green(`✓ API Key 已保存（${maskKey(key.trim())}）`)}\n`);
+							io.stdout.write(`${c.green(t("keySaved", maskKey(key.trim())))}\n`);
 						} else {
-							io.stdout.write(`${c.red("✗ Key 格式不正确（应以 sk- 开头）")}\n`);
+							io.stdout.write(`${c.red(t("keyBad"))}\n`);
 						}
 					} else {
-						io.stdout.write(`${c.dim("已取消")}\n`);
+						io.stdout.write(`${c.dim(t("cancelled"))}\n`);
 					}
 				}
 			}
@@ -1127,7 +1333,7 @@ async function run(ctx, config, io) {
 			io.stdout.write(`${c.dim("│")} ${c.dim("─".repeat(40))}\n`);
 			io.stdout.write(`${c.dim("│")} ${c.cyan("7.")} ${c.green(t("menuStart"))}\n`);
 			io.stdout.write(`${c.dim("└")}${c.dim("─".repeat(42))}${c.dim("┘")}\n`);
-			io.stdout.write(`${c.dim(`选择 1-7，回车直接开始对话：`)}`);
+			io.stdout.write(`${c.dim(t("wizardPrompt"))}`);
 
 			const raw = await nextLine();
 			if (raw === null) {
@@ -1141,16 +1347,16 @@ async function run(ctx, config, io) {
 			if (!Number.isNaN(num) && num >= 1 && num <= 7) {
 				if (num === 7) return settings;
 				if (num === 1) {
-					io.stdout.write(`\n${c.dim("是否允许工作区之外的操作？")}\n`);
+					io.stdout.write(`\n${c.dim(t("modeTitle"))}\n`);
 					availableModes.forEach((m, i) => {
 						io.stdout.write(`  ${c.cyan(`${i + 1}.`)} ${c.white(modeName(m))}${c.dim(`  ${m}`)}${modeDesc(m) ? c.dim(`  ${modeDesc(m)}`) : ""}\n`);
 					});
-					const pick = (await ask(c.dim("选择编号：")) ?? "").trim();
+					const pick = (await ask(c.dim(t("selectNum"))) ?? "").trim();
 					const idx = Number.parseInt(pick, 10) - 1;
 					if (availableModes[idx] !== void 0) {
 						settings.mode = availableModes[idx];
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 权限模式：${modeName(settings.mode)}`)}${c.dim(`（${settings.mode}）`)}\n`);
+						io.stdout.write(`${c.green(t("modeSet", modeName(settings.mode)))}${c.dim(`（${settings.mode}）`)}\n`);
 						if (agent !== void 0 && agent !== null && permissionPresets !== void 0) {
 							try {
 								permissionPresets.set(agent.session, settings.mode);
@@ -1160,13 +1366,13 @@ async function run(ctx, config, io) {
 						}
 					}
 				} else if (num === 2) {
-					io.stdout.write(`\n${c.dim("工作目录（是否在此目录工作？）：")}\n`);
-					io.stdout.write(`  ${c.cyan("0.")} ${c.sky(`使用当前目录：${process.cwd()}`)}\n`);
+					io.stdout.write(`\n${c.dim(t("cwdTitle"))}:\n`);
+					io.stdout.write(`  ${c.cyan("0.")} ${c.sky(t("cwdUseCurrent", process.cwd()))}\n`);
 					settings.cwdHistory.filter((p) => p !== process.cwd()).forEach((p, i) => {
-						io.stdout.write(`  ${c.cyan(`${i + 1}.`)} ${c.sky(p)}${p === settings.cwd ? c.dim("  ← 当前") : ""}\n`);
+						io.stdout.write(`  ${c.cyan(`${i + 1}.`)} ${c.sky(p)}${p === settings.cwd ? c.dim(`  ← ${t("curLabel")}`) : ""}\n`);
 					});
-					io.stdout.write(`  ${c.dim("或直接输入新路径，回车跳过")}\n`);
-					const pick = (await ask(c.dim("路径/编号：")) ?? "").trim();
+					io.stdout.write(`  ${c.dim(t("cwdInputPrompt"))}\n`);
+					const pick = (await ask(c.dim(t("selectNum"))) ?? "").trim();
 					let target = null;
 					if (pick !== "") {
 						const hidx = Number.parseInt(pick, 10);
@@ -1184,21 +1390,21 @@ async function run(ctx, config, io) {
 							settings.cwdHistory = [target, ...settings.cwdHistory.filter((p) => p !== target)].slice(0, 10);
 							saveSettings(settings);
 							await rebuildAgent();
-							io.stdout.write(`${c.green(`✓ 工作目录：${settings.cwd}`)}\n`);
+							io.stdout.write(`${c.green(t("cwdSet", settings.cwd))}\n`);
 						}
 					} else if (target !== null) {
-						io.stdout.write(`${c.red(`✗ 目录不存在：${target}`)}\n`);
+						io.stdout.write(`${c.red(t("cwdNotExist", target))}\n`);
 					}
 				} else if (num === 3) {
 					if (models.length === 0) {
-						io.stdout.write(`${c.red("模型列表不可用")}\n`);
+						io.stdout.write(`${c.red(t("modelListUnavailable"))}\n`);
 						continue;
 					}
-					io.stdout.write(`\n${c.dim("模型：")}\n`);
+					io.stdout.write(`\n${c.dim(t("modelTitle"))}:\n`);
 					models.forEach((m, i) => {
-						io.stdout.write(`  ${c.cyan(`${i + 1}.`)} ${c.white(m.name)}${c.dim(`  ${m.id}`)}${m.id === settings.model ? c.dim("  ← 当前") : ""}\n`);
+						io.stdout.write(`  ${c.cyan(`${i + 1}.`)} ${c.white(m.name)}${c.dim(`  ${m.id}`)}${m.id === settings.model ? c.dim(`  ← ${t("curLabel")}`) : ""}\n`);
 					});
-					const pick = (await ask(c.dim("选择编号：")) ?? "").trim();
+					const pick = (await ask(c.dim(t("selectNum"))) ?? "").trim();
 					const idx = Number.parseInt(pick, 10) - 1;
 					const next = models[idx];
 					if (next !== void 0 && next.id !== settings.model) {
@@ -1206,102 +1412,102 @@ async function run(ctx, config, io) {
 						settings.provider = next.provider;
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ 模型：${next.name} (${next.id})`)}\n`);
+						io.stdout.write(`${c.green(t("modelSet", next.name, next.id))}\n`);
 					}
 				} else if (num === 4) {
 					settings.showReasoning = !settings.showReasoning;
 					saveSettings(settings);
-					io.stdout.write(`${c.green(`✓ 显示思考过程：${settings.showReasoning ? "开" : "关"}`)}\n`);
+					io.stdout.write(`${c.green(t("thinkSet", settings.showReasoning ? t("on") : t("off")))}\n`);
 				} else if (num === 5) {
-					const key = (await ask(c.dim("请输入 DeepSeek API Key（sk-...，直接回车取消）：")) ?? "").trim();
+					const key = (await ask(c.dim(t("askKeyEnter"))) ?? "").trim();
 					if (key !== "") {
 						if (key.startsWith("sk-")) {
 							saveApiKey(key);
-							io.stdout.write(`${c.green(`✓ API Key 已保存（${maskKey(key)}）`)}\n`);
+							io.stdout.write(`${c.green(t("keySaved", maskKey(key)))}\n`);
 						} else {
-							io.stdout.write(`${c.red("✗ Key 格式不正确（应以 sk- 开头）")}\n`);
+							io.stdout.write(`${c.red(t("keyBad"))}\n`);
 						}
 					} else {
-						io.stdout.write(`${c.dim("已取消")}\n`);
+						io.stdout.write(`${c.dim(t("cancelled"))}\n`);
 					}
 				} else if (num === 6) {
 					// Advanced settings (numbered form)
-					io.stdout.write(`\n${c.white("高级设置：")}\n`);
-					io.stdout.write(`  ${c.cyan("1.")} ${c.white("思考强度")} ${c.dim(`（当前：${({ off: "关闭", high: "深度思考", max: "极致思考" })[settings.effort] ?? settings.effort}）`)}\n`);
-					io.stdout.write(`  ${c.cyan("2.")} ${c.white("Agent 预设")} ${c.dim(`（当前：${settings.preset}）`)}\n`);
-					io.stdout.write(`  ${c.cyan("3.")} ${c.white("语言")} ${c.dim(`（当前：${settings.language === "zh" ? "中文" : "English"}）`)}\n`);
-					io.stdout.write(`  ${c.cyan("4.")} ${c.white("繁忙时行为")} ${c.dim(`（当前：${settings.busyAction === "queue" ? "排队发送" : "打断当前回答"}）`)}\n`);
-					io.stdout.write(`  ${c.cyan("5.")} ${c.white("插件列表（只读）")}\n`);
-					io.stdout.write(`  ${c.cyan("6.")} ${c.white("Skill 列表（只读）")}\n`);
-					const adv = (await ask(c.dim("选择编号：")) ?? "").trim();
+					io.stdout.write(`\n${c.white(t("advancedTitle"))}\n`);
+					io.stdout.write(`  ${c.cyan("1.")} ${c.white(t("advEffort"))} ${c.dim(`(${t("curLabel")}: ${effortName(settings.effort)})`)}\n`);
+					io.stdout.write(`  ${c.cyan("2.")} ${c.white(t("advPreset"))} ${c.dim(`(${t("curLabel")}: ${settings.preset})`)}\n`);
+					io.stdout.write(`  ${c.cyan("3.")} ${c.white(t("advLang"))} ${c.dim(`(${t("curLabel")}: ${langName(settings.language)})`)}\n`);
+					io.stdout.write(`  ${c.cyan("4.")} ${c.white(t("advBusy"))} ${c.dim(`(${t("curLabel")}: ${busyName(settings.busyAction)})`)}\n`);
+					io.stdout.write(`  ${c.cyan("5.")} ${c.white(t("advPlugins"))}\n`);
+					io.stdout.write(`  ${c.cyan("6.")} ${c.white(t("advSkills"))}\n`);
+					const adv = (await ask(c.dim(t("selectNum"))) ?? "").trim();
 					if (adv === "1") {
-						io.stdout.write(`\n${c.dim("思考强度：")}\n  ${c.cyan("1.")} ${c.white("关闭（快速）")}\n  ${c.cyan("2.")} ${c.white("深度思考（默认）")}\n  ${c.cyan("3.")} ${c.white("极致思考")}\n`);
-						const pick = (await ask(c.dim("选择编号：")) ?? "").trim();
+						io.stdout.write(`\n${c.dim(t("effortTitle"))}:\n  ${c.cyan("1.")} ${c.white(t("effortOff"))} — ${t("effortOffDesc")}\n  ${c.cyan("2.")} ${c.white(t("effortHigh"))} — ${t("effortHighDesc")}\n  ${c.cyan("3.")} ${c.white(t("effortMax"))} — ${t("effortMaxDesc")}\n`);
+						const pick = (await ask(c.dim(t("selectNum"))) ?? "").trim();
 						const map = { 1: "off", 2: "high", 3: "max" };
 						if (map[pick] !== void 0) {
 							settings.effort = map[pick];
 							saveSettings(settings);
 							await rebuildAgent();
-							io.stdout.write(`${c.green(`✓ 思考强度：${({ off: "关闭", high: "深度思考", max: "极致思考" })[settings.effort]}`)}${c.dim("（已开启新会话）")}\n`);
+							io.stdout.write(`${c.green(t("effortSet", effortName(settings.effort)))}${c.dim(t("newSessionHint"))}\n`);
 						}
 					} else if (adv === "2") {
 						const presets = ctx.get("agentPresets");
-						io.stdout.write(`\n${c.dim("Agent 预设（直接输入 id）：")}\n`);
+						io.stdout.write(`\n${c.dim(t("presetTitle"))}:\n`);
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
-								list.forEach((p) => io.stdout.write(`  ${c.white(p.id)}${p.broken !== void 0 ? c.red(`  （损坏）`) : ""}\n`));
+								list.forEach((p) => io.stdout.write(`  ${c.white(p.id)}${p.broken !== void 0 ? c.red(t("presetBroken", p.broken)) : ""}\n`));
 							} catch {
 								// ignore
 							}
 						}
 						io.stdout.write(`  ${c.white("standard")}\n`);
-						const pick = (await ask(c.dim("预设 id：")) ?? "").trim();
+						const pick = (await ask(c.dim(t("presetTitle") + " id: ")) ?? "").trim();
 						if (pick !== "") {
 							settings.preset = pick;
 							saveSettings(settings);
 							await rebuildAgent();
-							io.stdout.write(`${c.green(`✓ Agent 预设：${pick}`)}${c.dim("（已开启新会话）")}\n`);
+							io.stdout.write(`${c.green(t("presetSet", pick))}${c.dim(t("newSessionHint"))}\n`);
 						}
 					} else if (adv === "3") {
-						const pick = (await ask(c.dim("语言（zh / en）：")) ?? "").trim();
+						const pick = (await ask(c.dim("zh / en: ")) ?? "").trim();
 						if (pick === "zh" || pick === "en") {
 							settings.language = pick;
 							t = makeT(settings.language);
 							saveSettings(settings);
-							io.stdout.write(`${c.green(`✓ 语言：${pick === "zh" ? "中文" : "English"}`)}\n`);
+							io.stdout.write(`${c.green(t("langSet", langName(settings.language)))}\n`);
 						}
 					} else if (adv === "4") {
-						const pick = (await ask(c.dim("繁忙时行为（queue / interrupt）：")) ?? "").trim();
+						const pick = (await ask(c.dim("queue / interrupt: ")) ?? "").trim();
 						if (pick === "queue" || pick === "interrupt") {
 							settings.busyAction = pick;
 							saveSettings(settings);
-							io.stdout.write(`${c.green(`✓ 繁忙时行为：${pick === "queue" ? "排队发送" : "打断当前回答"}`)}\n`);
+							io.stdout.write(`${c.green(t("busySet", busyName(settings.busyAction)))}\n`);
 						}
 					} else if (adv === "5") {
 						const loader = ctx.get("loader");
 						if (loader !== void 0 && typeof loader.entries === "function") {
 							const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
-							io.stdout.write(`${c.dim(`已加载插件（${names.length}）：`)}\n`);
+							io.stdout.write(`${c.dim(t("loadedPlugins", names.length))}\n`);
 							names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
 						} else {
-							io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+							io.stdout.write(`${c.dim(t("pluginsUnavailable"))}\n`);
 						}
 					} else if (adv === "6") {
 						const skills = ctx.get("skills");
 						if (skills !== void 0) {
 							try {
 								const items = await skills.list({ cwd: settings.cwd });
-								if (items.length === 0) io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+								if (items.length === 0) io.stdout.write(`${c.dim(t("noSkills"))}\n`);
 								else {
-									io.stdout.write(`${c.dim(`可用 Skill（${items.length}）：`)}\n`);
+									io.stdout.write(`${c.dim(t("availableSkills", items.length))}\n`);
 									items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
 								}
 							} catch {
-								io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+								io.stdout.write(`${c.dim(t("skillsListUnavailable"))}\n`);
 							}
 						} else {
-							io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+							io.stdout.write(`${c.dim(t("skillsUnavailable"))}\n`);
 						}
 					}
 				}
@@ -1353,7 +1559,7 @@ async function run(ctx, config, io) {
 			toolNames.set(event.data.callId, event.data.name);
 			io.stdout.write(`\n${c.cyan(`  ◈ ${event.data.name}`)}${c.dim(" …")}\n`);
 		} else if (event.type === "tool/result") {
-			const toolName = toolNames.get(event.data.message?.source?.callId) ?? "工具";
+			const toolName = toolNames.get(event.data.message?.source?.callId) ?? t("toolName");
 			io.stdout.write(`${c.green(`  ✓ ${toolName}`)}\n`);
 		}
 	};
@@ -1370,7 +1576,7 @@ async function run(ctx, config, io) {
 			await agent.whenIdle();
 			io.stdout.write("\n");
 			if (interrupted) {
-				io.stdout.write(`${c.dim("（已中断）")}\n`);
+				io.stdout.write(`${c.dim(t("interrupted"))}\n`);
 				interrupted = false;
 			}
 			let reason;
@@ -1406,7 +1612,7 @@ async function run(ctx, config, io) {
 					return;
 				case "help":
 				case "h":
-					io.stdout.write(HELP);
+					io.stdout.write(t("help"));
 					continue;
 				case "config": {
 					busy = true;
@@ -1421,8 +1627,8 @@ async function run(ctx, config, io) {
 				case "mode": {
 					const available = permissionPresets !== void 0 ? permissionPresets.names : [];
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前权限模式")} ${c.yellow(modeName(settings.mode))}${c.dim(`（${settings.mode}）`)}\n`);
-						io.stdout.write(`${c.dim(`可选：${available.map((m) => `${modeName(m)}（${m}）`).join(" / ")}`)}\n`);
+						io.stdout.write(`${c.dim(t("currentMode"))} ${c.yellow(modeName(settings.mode))}${c.dim(`（${settings.mode}）`)}\n`);
+						io.stdout.write(`${c.dim(t("modeOptional", available.map((m) => `${modeName(m)}（${m}）`).join(" / ")))}\n`);
 						continue;
 					}
 					if (available.includes(arg)) {
@@ -1435,16 +1641,16 @@ async function run(ctx, config, io) {
 								// best-effort
 							}
 						}
-						io.stdout.write(`${c.green(`✓ 权限模式：${modeName(arg)}`)}${c.dim(`（${arg}）`)}\n`);
+						io.stdout.write(`${c.green(t("modeSet", modeName(arg)))}${c.dim(`（${arg}）`)}\n`);
 					} else {
-						io.stdout.write(`${c.red(`✗ 未知模式：${arg}`)}${c.dim(`（可选：${available.map((m) => modeName(m)).join(" / ")}）`)}\n`);
+						io.stdout.write(`${c.red(t("unknownMode", arg))}${c.dim(`（${t("modeOptional", available.map((m) => modeName(m)).join(" / "))}）`)}\n`);
 					}
 					continue;
 				}
 				case "cd": {
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前工作目录")} ${c.sky(settings.cwd)}\n`);
-						io.stdout.write(`${c.dim("用法：/cd <路径>")}\n`);
+						io.stdout.write(`${c.dim(t("currentCwd"))} ${c.sky(settings.cwd)}\n`);
+						io.stdout.write(`${c.dim(t("cdUsage"))}\n`);
 						continue;
 					}
 					const target = expandPath(arg);
@@ -1453,16 +1659,16 @@ async function run(ctx, config, io) {
 						settings.cwdHistory = [target, ...settings.cwdHistory.filter((p) => p !== target)].slice(0, 10);
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ 工作目录：${settings.cwd}`)}${c.dim("（已开启新会话）")}\n`);
+						io.stdout.write(`${c.green(t("cwdSet", settings.cwd))}${c.dim(t("newSessionHint"))}\n`);
 					} else {
-						io.stdout.write(`${c.red(`✗ 目录不存在：${target}`)}\n`);
+						io.stdout.write(`${c.red(t("cwdNotExist", target))}\n`);
 					}
 					continue;
 				}
 				case "model": {
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前模型")} ${c.sky(settings.model)}${c.dim(`（${settings.provider}）`)}\n`);
-						io.stdout.write(`${c.dim("用法：/model <模型id>，或 /model list 查看列表")}\n`);
+						io.stdout.write(`${c.dim(t("currentModel"))} ${c.sky(settings.model)}${c.dim(`（${settings.provider}）`)}\n`);
+						io.stdout.write(`${c.dim(t("modelUsage"))}\n`);
 						continue;
 					}
 					if (arg === "list" || arg === "?") {
@@ -1470,14 +1676,14 @@ async function run(ctx, config, io) {
 							const models = await llm.listModels(settings.provider);
 							models.forEach((m) => io.stdout.write(`  ${c.white(m.name)}${c.dim(`  ${m.id}`)}\n`));
 						} catch {
-							io.stdout.write(`${c.red("模型列表不可用")}\n`);
+							io.stdout.write(`${c.red(t("modelListUnavailable"))}\n`);
 						}
 						continue;
 					}
 					settings.model = arg;
 					saveSettings(settings);
 					await rebuildAgent();
-					io.stdout.write(`${c.green(`✓ 模型：${arg}`)}${c.dim("（已开启新会话）")}\n`);
+					io.stdout.write(`${c.green(t("modelSet", arg, ""))}${c.dim(t("newSessionHint"))}\n`);
 					continue;
 				}
 				case "think": {
@@ -1487,58 +1693,57 @@ async function run(ctx, config, io) {
 					else if (off) settings.showReasoning = false;
 					else settings.showReasoning = !settings.showReasoning;
 					saveSettings(settings);
-					io.stdout.write(`${c.green(`✓ 显示思考过程：${settings.showReasoning ? "开" : "关"}`)}\n`);
+					io.stdout.write(`${c.green(t("thinkSet", settings.showReasoning ? t("on") : t("off")))}\n`);
 					continue;
 				}
 				case "effort": {
-					const names = { off: "关闭（快速）", high: "深度思考", max: "极致思考" };
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前思考强度")} ${c.white(names[settings.effort] ?? settings.effort)}${c.dim(`（可选：off / high / max）`)}\n`);
+						io.stdout.write(`${c.dim(t("currentEffort"))} ${c.white(effortName(settings.effort))}${c.dim(t("effortOptional"))}\n`);
 						continue;
 					}
-					if (names[arg] !== void 0) {
+					if (arg === "off" || arg === "high" || arg === "max") {
 						settings.effort = arg;
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ 思考强度：${names[arg]}`)}${c.dim("（已开启新会话）")}\n`);
+						io.stdout.write(`${c.green(t("effortSet", effortName(arg)))}${c.dim(t("newSessionHint"))}\n`);
 					} else {
-						io.stdout.write(`${c.red(`✗ 未知强度：${arg}`)}${c.dim(`（可选：off / high / max）`)}\n`);
+						io.stdout.write(`${c.red(t("unknownEffort", arg))}${c.dim(t("effortOptional"))}\n`);
 					}
 					continue;
 				}
 				case "preset": {
 					const presets = ctx.get("agentPresets");
 					if (rest[0] === "new") {
-						const name = (rest.slice(1).join("-") || (await ask(c.dim("新预设 id（kebab-case）：")) ?? "").trim()).trim();
+						const name = (rest.slice(1).join("-") || (await ask(c.dim(t("presetNeedName") + " ")) ?? "").trim()).trim();
 						if (name === "") {
-							io.stdout.write(`${c.red("✗ 需要名称，如：/preset new 我的助手")}\n`);
+							io.stdout.write(`${c.red(t("presetNeedName"))}\n`);
 							continue;
 						}
 						if (presets === void 0 || typeof presets.copy !== "function") {
-							io.stdout.write(`${c.red("✗ 预设服务不可用（无法自动创建）")}\n`);
+							io.stdout.write(`${c.red(t("presetNoService"))}\n`);
 							continue;
 						}
 						try {
 							await presets.copy("standard", name, name);
-							io.stdout.write(`${c.green(`✓ 预设已创建（复制自 standard）：${customPresetDir()}\\${name}\\agent.cordis.yml`)}\n`);
-							io.stdout.write(`${c.dim("编辑后 /preset 立即可选，创建会话时生效")}\n`);
+							io.stdout.write(`${c.green(t("presetCreated", `${customPresetDir()}\\${name}`))}\n`);
+							io.stdout.write(`${c.dim(t("presetCreatedHint"))}\n`);
 						} catch (err) {
-							io.stdout.write(`${c.red(`✗ 创建失败：${err.message}`)}\n`);
+							io.stdout.write(`${c.red(t("createFailed", err.message))}\n`);
 						}
 						continue;
 					}
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前 Agent 预设")} ${c.white(settings.preset)}\n`);
-						io.stdout.write(`${c.dim(`自定义预设目录：${c.sky(customPresetDir())}`)}\n`);
-						io.stdout.write(`${c.dim(`创建模板：/preset new <名称>`)}\n`);
+						io.stdout.write(`${c.dim(t("currentPreset"))} ${c.white(settings.preset)}\n`);
+						io.stdout.write(`${c.dim(t("customPresetDirLabel", c.sky(customPresetDir())))}\n`);
+						io.stdout.write(`${c.dim(t("presetTemplateHint"))}\n`);
 						const custom = listCustomPresets();
 						if (custom.length > 0) {
-							io.stdout.write(`${c.dim(`已有自定义预设：${custom.map((p) => c.white(p)).join(", ")}`)}\n`);
+							io.stdout.write(`${c.dim(t("customPresetsList", custom.map((p) => c.white(p)).join(", ")))}\n`);
 						}
 						if (presets !== void 0) {
 							try {
 								const list = await presets.list();
-								io.stdout.write(`${c.dim(`全部预设：${list.map((p) => p.id).join(" / ")}`)}\n`);
+								io.stdout.write(`${c.dim(t("allPresets", list.map((p) => p.id).join(" / ")))}\n`);
 							} catch {
 								// ignore
 							}
@@ -1548,93 +1753,93 @@ async function run(ctx, config, io) {
 					settings.preset = arg;
 					saveSettings(settings);
 					await rebuildAgent();
-					io.stdout.write(`${c.green(`✓ Agent 预设：${arg}`)}${c.dim("（已开启新会话）")}\n`);
+					io.stdout.write(`${c.green(t("presetSet", arg))}${c.dim(t("newSessionHint"))}\n`);
 					continue;
 				}
 				case "lang":
 				case "language": {
 					if (arg === "") {
-						io.stdout.write(`${c.dim("当前语言")} ${c.white(settings.language === "zh" ? "中文" : "English")}\n`);
+						io.stdout.write(`${c.dim(t("currentLang"))} ${c.white(langName(settings.language))}\n`);
 						continue;
 					}
 					if (arg === "zh" || arg === "en") {
 						settings.language = arg;
 						t = makeT(settings.language);
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 语言：${settings.language === "zh" ? "中文" : "English"}`)}\n`);
+						io.stdout.write(`${c.green(t("langSet", langName(settings.language)))}\n`);
 					} else {
-						io.stdout.write(`${c.red(`✗ 未知语言：${arg}`)}${c.dim(`（可选：zh / en）`)}\n`);
+						io.stdout.write(`${c.red(t("unknownLang", arg))}${c.dim(t("langOptional"))}\n`);
 					}
 					continue;
 				}
 				case "busy": {
 					if (arg === "") {
-						io.stdout.write(`${c.dim("繁忙时行为")} ${c.white(settings.busyAction === "queue" ? "排队发送" : "打断当前回答")}${c.dim(`（可选：queue / interrupt）`)}\n`);
+						io.stdout.write(`${c.dim(t("currentBusy"))} ${c.white(busyName(settings.busyAction))}${c.dim(t("busyOptional"))}\n`);
 						continue;
 					}
 					if (arg === "queue" || arg === "interrupt") {
 						settings.busyAction = arg;
 						saveSettings(settings);
-						io.stdout.write(`${c.green(`✓ 繁忙时行为：${arg === "queue" ? "排队发送" : "打断当前回答"}`)}\n`);
+						io.stdout.write(`${c.green(t("busySet", busyName(arg)))}\n`);
 					} else {
-						io.stdout.write(`${c.red(`✗ 未知：${arg}`)}${c.dim(`（可选：queue / interrupt）`)}\n`);
+						io.stdout.write(`${c.red(t("unknownBusy", arg))}${c.dim(t("busyOptional"))}\n`);
 					}
 					continue;
 				}
 				case "plugins": {
 					const loader = ctx.get("loader");
 					if (loader === void 0 || typeof loader.entries !== "function") {
-						io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+						io.stdout.write(`${c.dim(t("pluginsUnavailable"))}\n`);
 						continue;
 					}
 					const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
-					io.stdout.write(`${c.dim(`已加载插件（${names.length}）：`)}\n`);
+					io.stdout.write(`${c.dim(t("loadedPlugins", names.length))}\n`);
 					names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
 					continue;
 				}
 				case "skills": {
 					if (rest[0] === "new") {
-						const name = (rest.slice(1).join("-") || (await ask(c.dim("新 skill 名称（kebab-case）：")) ?? "").trim()).trim();
+						const name = (rest.slice(1).join("-") || (await ask(c.dim(t("skillNeedName") + " ")) ?? "").trim()).trim();
 						if (name === "") {
-							io.stdout.write(`${c.red("✗ 需要名称，如：/skills new 我的助手")}\n`);
+							io.stdout.write(`${c.red(t("skillNeedName"))}\n`);
 							continue;
 						}
 						const result = createSkillTemplate(name);
 						if (result.ok) {
-							io.stdout.write(`${c.green(`✓ Skill 模板已创建：${result.path}\\SKILL.md`)}\n`);
-							io.stdout.write(`${c.dim("编辑后 /skills 立即可见，模型可调用")}\n`);
+							io.stdout.write(`${c.green(t("skillCreated", result.path))}\n`);
+							io.stdout.write(`${c.dim(t("skillCreatedHint"))}\n`);
 						} else {
 							io.stdout.write(`${c.red(`✗ ${result.message}`)}\n`);
 						}
 						continue;
 					}
 					const skills = ctx.get("skills");
-					io.stdout.write(`${c.dim(`自定义 Skill 目录：${c.sky(customSkillDir())}`)}\n`);
-					io.stdout.write(`${c.dim(`创建模板：/skills new <名称>`)}\n`);
+					io.stdout.write(`${c.dim(t("customSkillDirLabel", c.sky(customSkillDir())))}\n`);
+					io.stdout.write(`${c.dim(t("skillTemplateHint"))}\n`);
 					if (skills === void 0) {
-						io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+						io.stdout.write(`${c.dim(t("skillsUnavailable"))}\n`);
 						continue;
 					}
 					try {
 						const items = await skills.list({ cwd: settings.cwd });
 						if (items.length === 0) {
-							io.stdout.write(`${c.dim("没有可用 Skill（放一个到上面目录试试）")}\n`);
+							io.stdout.write(`${c.dim(t("noSkillsHint"))}\n`);
 							continue;
 						}
-						io.stdout.write(`${c.dim(`可用 Skill（${items.length}）：`)}\n`);
+						io.stdout.write(`${c.dim(t("availableSkills", items.length))}\n`);
 						items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
 					} catch {
-						io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+						io.stdout.write(`${c.dim(t("skillsListUnavailable"))}\n`);
 					}
 					continue;
 				}
 				case "new": {
 					await rebuildAgent();
-					io.stdout.write(`${c.dim("—— 已开启新会话 ——")}\n`);
+					io.stdout.write(`${c.dim(t("newSessionLine"))}\n`);
 					continue;
 				}
 				default:
-					io.stdout.write(`${c.red(`未知命令：/${cmd}`)}${c.dim("（输入 /help 查看命令列表）")}\n`);
+					io.stdout.write(`${c.red(t("unknownCmd", cmd))}${c.dim(t("unknownCmdHint"))}\n`);
 					continue;
 			}
 		}
