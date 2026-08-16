@@ -173,6 +173,28 @@ export HTTPS_PROXY=http://proxy.internal:8080
 deepseek
 ```
 
+### 🚀 启动参数
+
+| 参数 | 作用 |
+|---|---|
+| `--no-input`（`-n`） | 非交互：跳过配置向导，管道输入即任务，EOF 自动退出（适合 cron / CI） |
+| `--verbose`（`--debug` / `-v`） | 每回合结束打印耗时 / token 消耗 / 工具调用次数 |
+| `--auto-fix` | 预留：允许 Agent 自动修复（配合非交互使用） |
+
+```powershell
+deepseek --no-input "分析并修复 error.log 里的错误"
+deepseek --verbose
+tail -f app.log | deepseek --no-input -v "发现异常就总结"
+```
+
+### 🌐 环境变量
+
+| 变量 | 作用 |
+|---|---|
+| `DSH_HOME` | 数据目录（默认 `~/.dsh`）：配置文件、会话、日志、凭据都在这里 |
+| `HTTP_PROXY` / `HTTPS_PROXY` | 代理地址，自动生效（无需参数），如 `http://proxy.internal:8080` |
+| `DEEPSEEK_CLI_HOME` | 一行安装器的安装目录（默认 `~/.deepseek-cli` 或 `%LOCALAPPDATA%\DeepSeek-CLI`） |
+
 ---
 
 ## 🎮 交互
@@ -192,21 +214,22 @@ deepseek
 
 ### 对话命令
 
-| 命令 | 作用 |
-|---|---|
-| `/config` | 打开配置向导 |
-| `/mode` | 切换权限模式（只读 / 工作区写入 / 完全访问） |
-| `/cd <路径>` | 切换工作目录 |
-| `/model` | 切换模型（多 provider） |
-| `/think` | 显示/隐藏思考过程 |
-| `/effort` | 思考强度（off / high / max） |
-| `/preset` | Agent 预设（code / cordis / minimal / standard） |
-| `/lang` | 切换界面语言（zh / en） |
-| `/busy` | 繁忙时行为（queue 排队 / interrupt 打断） |
-| `/plugins` | 列出已加载插件 |
-| `/skills` | 列出可用 Skill |
-| `/new` | 开启新会话 |
-| `/exit` | 退出 |
+| 命令 | 语法 | 说明 |
+|---|---|---|
+| `/config` | `/config` | 重新打开配置向导 |
+| `/mode` | `/mode`<br>`/mode <模式>` | 无参：显示当前权限模式与可选列表；带参：切换（`read-only` / `workspace-write` / `danger-full-access`），如 `/mode read-only` |
+| `/cd` | `/cd`<br>`/cd <路径>` | 无参：显示当前工作目录与用法；带参：切换（支持 `~`、相对/绝对路径），如 `/cd ~/projects` |
+| `/model` | `/model`<br>`/model <id>`<br>`/model list` | 无参：显示当前模型；`list` 或 `?`：列出当前 provider 全部模型；带参：直接切换，如 `/model deepseek-v4-flash` |
+| `/think` | `/think [on\|off]` | 切换思考过程显示；可带 `on` / `off` / `1` / `0` |
+| `/effort` | `/effort`<br>`/effort <off\|high\|max>` | 无参：显示当前；带参：切换思考强度（`off` 快速 / `high` / `max`） |
+| `/preset` | `/preset`<br>`/preset <id>`<br>`/preset new <名称>` | 无参：显示当前预设、自定义目录与示例结构；带参：切换（`code` / `cordis` / `minimal` / `standard` 或自定义）；`new`：从 standard 复制创建自定义预设 |
+| `/lang` | `/lang [zh\|en]` | 无参：显示当前语言；带参：切换界面语言 |
+| `/busy` | `/busy [queue\|interrupt]` | 无参：显示当前行为；带参：切换（`queue` 排队发送 / `interrupt` 输入即打断当前回答） |
+| `/plugins` | `/plugins` | 列出已加载插件 |
+| `/skills` | `/skills`<br>`/skills new <名称>` | 列出可用 Skill 与自定义目录；`new`：在 `$DSH_HOME/skills/<名称>/` 创建 SKILL.md 模板 |
+| `/new` | `/new` | 开启新会话（旧会话保留在 `$DSH_HOME/sessions/`） |
+| `/help` | `/help`（或 `/h`） | 显示帮助 |
+| `/exit` | `/exit`（或 `/quit` / `/q`） | 退出（`Ctrl+C` 空输入也行） |
 
 ### 按键
 
@@ -228,9 +251,11 @@ DeepSeek-CLI/
 ├── install.cmd / install.sh     # 一键安装（Windows / Linux-macOS）
 ├── install-oneliner.sh / .ps1   # 一行安装（零依赖，含 dsh 版本校验）
 ├── package.json                 # 开发依赖（vitest 单元测试）
-├── test/                        # 单元测试（vitest，纯函数全覆盖）
-│   ├── utils.test.js
-│   └── config.test.js
+├── test/                        # 单元测试（vitest，55 用例）
+│   ├── utils.test.js            # i18n / CJK 宽度 / 路径 / 脱敏
+│   ├── config.test.js           # 设置与凭据读写
+│   ├── commands.test.js         # 命令解析
+│   └── menu.test.js             # 菜单导航状态机
 ├── profiles/
 │   └── cli/             # dsh cli profile
 │       ├── package.json
@@ -247,6 +272,22 @@ DeepSeek-CLI/
     ├── deepseek.cmd / .ps1 / (bash)  # 主命令
     ├── dsh-chat.cmd / .ps1   # 兼容别名
     └── dsh-ask.cmd / .ps1    # 一次性问答
+```
+
+**运行时数据目录（`$DSH_HOME`，默认 `~/.dsh`）**——所有用户数据都在这，不在仓库里：
+
+```
+~/.dsh/
+├── cli-settings.json      # CLI 用户偏好（权限/目录/模型/语言…）
+├── .credentials.yaml      # API Key（与 DSH 网页版共用，绝不提交 git）
+├── app-debug.log          # 引擎运行日志
+├── app-dsh-out.log        # 引擎标准输出
+├── app-dsh-err.log        # 引擎错误输出
+├── sessions/              # 会话历史（一个会话一个文件）
+├── skills/                # 自定义 Skill（<名称>/SKILL.md）
+├── .agent-presets/        # 自定义预设（<id>/agent.cordis.yml）
+├── storages/              # 引擎存储
+└── profiles/cli/          # 本 CLI 的 profile（源码来自本仓库）
 ```
 
 ---
@@ -329,6 +370,76 @@ Get-Content $env:USERPROFILE\.dsh\app-debug.log -Tail 30 -Wait
 
 > **故障排查顺序**：先 `deepseek --verbose` 看回合是否正常 → 引擎报错看 `app-dsh-err.log` → 启动异常看 `app-debug.log` 尾部。
 
+## 🧩 自定义 Skill
+
+Skill = 给 Agent 的"技能说明书"。放一个目录即可，**不用改代码**：
+
+```
+$DSH_HOME/skills/
+└── my-skill/
+    └── SKILL.md          # 技能内容（markdown 头部带 name/description）
+```
+
+**操作：**
+
+```powershell
+deepseek
+/skills              # 查看已有 Skill 和自定义目录位置
+/skills new my-skill # 自动创建模板 $DSH_HOME\skills\my-skill\SKILL.md，改内容即可
+```
+
+模板（`SKILL.md`）：
+
+```markdown
+---
+name: my-skill
+description: 描述这个 skill 的用途（一行）
+---
+在这里编写 skill 的指令内容。模型调用此 skill 时会看到这里的内容。
+```
+
+## 🤖 自定义 Agent 预设
+
+预设 = 人设 + 工具组合。放 `$DSH_HOME/.agent-presets/<id>/agent.cordis.yml`：
+
+```
+$DSH_HOME/.agent-presets/
+└── my-agent/
+    └── agent.cordis.yml   # 自定义人设/工具
+```
+
+**操作：**
+
+```powershell
+deepseek
+/preset              # 查看已有预设和自定义目录位置
+/preset new my-agent # 从 standard 复制一份起步，再改内容
+/preset my-agent     # 切换到你的预设
+```
+
+## 💬 会话管理
+
+| 操作 | 方法 |
+|---|---|
+| 开启新会话 | `/new`（旧会话自动保存） |
+| 查看历史会话 | `dir %USERPROFILE%\.dsh\sessions`（PowerShell：`Get-ChildItem $env:USERPROFILE\.dsh\sessions`） |
+| 清空全部历史 | `del %USERPROFILE%\.dsh\sessions\*`（PowerShell：`Remove-Item $env:USERPROFILE\.dsh\sessions\* -Recurse -Force`） |
+
+## 🗑️ 卸载与清理
+
+```powershell
+# 1. 删除启动命令（deepseek / dsh-chat / dsh-ask）
+#    一行安装：删掉安装目录里的 deepseek.cmd / deepseek.ps1
+#    或手动删除你当初放到 PATH 的 bin\deepseek.* 文件
+
+# 2. 删除 CLI profile
+Remove-Item "$env:USERPROFILE\.dsh\profiles\cli" -Recurse -Force
+
+# 3. （可选）删除全部数据：配置、会话、日志、凭据
+Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
+# ⚠️ 第 3 步会连 API Key（.credentials.yaml）一起删，确定不要了再执行
+```
+
 ## 🔒 配置与安全
 
 - **API Key**：`$DSH_HOME/.credentials.yaml`（与 DeepSeek Harness 网页版共用；**已被 .gitignore 排除，不会提交**）
@@ -363,7 +474,7 @@ Get-Content $env:USERPROFILE\.dsh\app-debug.log -Tail 30 -Wait
 - 🧪 **测试 55 个用例**：新增 `test/menu.test.js`（光标移动/环绕、Enter/ESC/数字键、吞行恰好一次、非 TTY 行为）与 `test/commands.test.js`（`/mode read-only` → 命令对象、路径带空格、非命令返回 null）
 - 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）push/PR 自动跑测试，README 顶部实时绿勾
 - 📜 **开源协议 MIT → AGPL-3.0**：最强 copyleft——修改/分发/网络服务都必须开源全部衍生代码，防止"改两行拿去闭源卖钱"
-- 📖 **日志与调试文档**：新增「日志与调试」章节——`--verbose` 实时调试、`$DSH_HOME` 下引擎日志（`app-debug/out/err.log`）的 cmd/PowerShell 查看方法与故障排查顺序
+- 📖 **完整操作手册**：README 补齐全部操作——对话命令完整语法/示例、启动参数（`--no-input`/`--verbose`/`--auto-fix`）、环境变量（`DSH_HOME`/代理）、自定义 Skill/Preset 操作、会话管理、日志查看、卸载清理、`$DSH_HOME` 数据目录结构
 
 ### v1.3.0（2026-08）— 工程化重构
 
