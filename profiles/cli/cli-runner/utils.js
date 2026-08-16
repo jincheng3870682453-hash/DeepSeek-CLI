@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 /** The CLI's own semantic version, shown in the banner and README. */
-export const VERSION = "1.3.0";
+export const VERSION = "1.3.1";
 
 /** UI strings for the two supported languages. Values may use {0}/{1} placeholders. */
 export const I18N = {

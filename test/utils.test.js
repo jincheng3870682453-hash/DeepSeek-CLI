@@ -37,7 +37,7 @@ afterEach(() => {
 
 describe("VERSION / constants", () => {
 	it("matches the packaged release", () => {
-		expect(VERSION).toBe("1.3.0");
+		expect(VERSION).toBe("1.3.1");
 	});
 	it("covers all three permission modes", () => {
 		expect(Object.keys(MODE_LABELS).sort()).toEqual([

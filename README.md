@@ -4,11 +4,11 @@
 
 **命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
-**v1.3.0** 🎉
+**v1.3.1** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.3.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Version](https://img.shields.io/badge/Version-1.3.1-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![Tests](https://img.shields.io/github/actions/workflow/status/jincheng3870682453-hash/DeepSeek-CLI/test.yml?branch=master&label=Tests&logo=vitest&logoColor=white&color=4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI/actions/workflows/test.yml)
-[![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Powered by](https://img.shields.io/badge/Model-DeepSeek--V4-4D6BFE)](https://www.deepseek.com)
@@ -303,22 +303,35 @@ Windows 与 Linux 行为一致。
 
 ## 📄 许可证
 
-[MIT](LICENSE)
+本项目采用 **GNU Affero General Public License v3（AGPL-3.0）**：[LICENSE](LICENSE)
+
+> **一句话**：**随便用，但改过的代码也必须开源** —— 任何人修改、分发、或通过网络对外提供本软件（或其衍生版本）的服务，都必须以 AGPL-3.0 公开全部修改后的源码。
+> 想"偷改两行就闭源拿去卖钱"？AGPL 就是为此设计的：改一行也得开源，闭源商用即侵权。
+>
+> - ✅ 允许：个人使用、学习、修改、分发（含收费分发，但必须同时提供源码）
+> - ⚠️ 要求：任何修改/衍生作品必须同样以 AGPL-3.0 开源；通过网络提供服务的也要开放对应源码（第 13 条）
+> - ❌ 禁止：闭源分发、闭源商用衍生品、增加额外限制条款
 
 ## 🤝 贡献
 
-想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/`（`index.js` / `utils.js` / `config.js`），纯函数改完跑 `npm test`。
+想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/`（`index.js` / `utils.js` / `config.js` / `menu.js` / `commands.js`），纯函数改完跑 `npm test`。
 提交 PR 时请使用仓库内的 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)。
 
 ---
 
 ## 🏷️ 版本历史
 
+### v1.3.1（2026-08）— 再拆一层 + CI 绿勾 + AGPL 协议
+
+- 📦 **继续拆文件**：`cli-runner/index.js` 降至 **1060 行** —— 新增 `menu.js`（方向键菜单控制器：渲染 + 导航状态机，keypress 直接驱动、可独立单测）与 `commands.js`（命令解析纯函数 `parseCommand`）
+- 🧪 **测试 55 个用例**：新增 `test/menu.test.js`（光标移动/环绕、Enter/ESC/数字键、吞行恰好一次、非 TTY 行为）与 `test/commands.test.js`（`/mode read-only` → 命令对象、路径带空格、非命令返回 null）
+- 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）push/PR 自动跑测试，README 顶部实时绿勾
+- 📜 **开源协议 MIT → AGPL-3.0**：最强 copyleft——修改/分发/网络服务都必须开源全部衍生代码，防止"改两行拿去闭源卖钱"
+
 ### v1.3.0（2026-08）— 工程化重构
 
-- 📦 **代码拆文件**：`cli-runner/index.js` 从 1955 行拆为 `index.js`（交互/会话/命令执行）+ `utils.js`（i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助）+ `config.js`（设置与凭据读写）；再拆出 `menu.js`（方向键菜单控制器，可独立测试）与 `commands.js`（命令解析纯函数）
-- 🧪 **单元测试**：vitest 共 **55 个用例**（`utils` 25 + `config` 10 + `commands` 10 + `menu` 10），覆盖 i18n 占位替换、CJK 显示宽度、密钥脱敏、路径展开、设置 BOM/损坏容错、凭据读写、命令解析（`/mode read-only` → 命令对象）、菜单导航（↑↓/Enter/ESC/数字键/吞行）；`npm test` 一键运行
-- 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）每次 push/PR 自动跑测试，README 顶部实时显示绿勾
+- 📦 **代码拆文件**：`cli-runner/index.js` 从 1955 行拆为 `index.js`（交互/会话/命令执行）+ `utils.js`（i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助）+ `config.js`（设置与凭据读写）
+- 🧪 **单元测试**：引入 vitest（35 用例：utils 25 + config 10），覆盖 i18n 占位替换、CJK 显示宽度、密钥脱敏、路径展开、设置 BOM/损坏容错、凭据读写；`npm test` 一键运行
 - 🛡️ **DSH 版本标注**：README 标明基于 `@deepseek-ai/dsh` 0.1.x（`0.1.0-rc.6`）开发验证；`install-oneliner.sh/.ps1` 安装时自动校验 `dsh --version` 主版本并提示匹配版本
 - 🗂️ **配置格式说明**：README 新增「两种配置，各司其职」——`cordis.yml` 是 DSH 引擎装配清单（不能改格式），`cli-settings.json` 是 CLI 用户偏好（随便改）
 
