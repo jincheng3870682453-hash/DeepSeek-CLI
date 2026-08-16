@@ -26,6 +26,13 @@
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
 
+    # Agent preset roster (code / cordis / minimal / standard) so the CLI can
+    # switch the agent's tool set + prompt sections like the Web surface.
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: standard
+
     # Interactive readline runner: reads messages from stdin, drives one
     # Agent through the core registry, streams assistant text to stdout.
     - id: cli-runner

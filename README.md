@@ -32,9 +32,13 @@
 | 🎮 **方向键配置向导** | 🛡️ **权限模式** | 🔑 **首次使用引导** |
 | ↑↓ 导航菜单（Codex 风格），自动探测终端能力 | 只读 / 工作区写入 / 完全访问，实时切换 | 自动检测并引导配置 API Key（隐藏输入） |
 | 📂 **工作区管理** | 🧠 **模型选择** | 📋 **多行粘贴** |
-| 当前目录 / 历史记录 / 自定义路径 | deepseek-v4-flash / deepseek-v4-pro | 粘贴整段代码自动合并为一条消息 |
-| ⚡ **流式输出** | ⌨️ **完整 CLI 交互** | 🐋 **品牌启动画面** |
-| 边生成边显示，工具调用内联提示 | Ctrl+C 中断/清行/退出，ESC 等同 | DeepSeek 大鲸鱼 logo + DEEPSEEK 大字 |
+| 当前目录 / 历史记录 / 自定义路径 | 多 provider 模型（Flash / Pro） | 粘贴整段代码自动合并为一条消息 |
+| 🎯 **思考强度** | 🤖 **Agent 预设** | 🌐 **中英文界面** |
+| off（快速）/ high / max 逐模型切换 | code / cordis / minimal / standard | `/lang` 或高级设置一键切换 |
+| ⚙️ **繁忙时行为** | 🔌 **插件 & Skill 查看** | ⚡ **流式输出** |
+| 排队发送 / 输入即打断当前回答 | `/plugins`、`/skills` 列出现有清单 | 边生成边显示，工具调用内联提示 |
+| ⌨️ **完整 CLI 交互** | 🐋 **品牌启动画面** | | 
+| Ctrl+C 中断/清行/退出，ESC 等同 | DeepSeek 大鲸鱼 logo + DEEPSEEK 大字 | |
 
 ---
 
@@ -96,8 +100,14 @@ deepseek            # 启动（等同 dsh --profile cli）
 | `/config` | 打开配置向导 |
 | `/mode` | 切换权限模式（只读 / 工作区写入 / 完全访问） |
 | `/cd <路径>` | 切换工作目录 |
-| `/model` | 切换模型 |
+| `/model` | 切换模型（多 provider） |
 | `/think` | 显示/隐藏思考过程 |
+| `/effort` | 思考强度（off / high / max） |
+| `/preset` | Agent 预设（code / cordis / minimal / standard） |
+| `/lang` | 切换界面语言（zh / en） |
+| `/busy` | 繁忙时行为（queue 排队 / interrupt 打断） |
+| `/plugins` | 列出已加载插件 |
+| `/skills` | 列出可用 Skill |
 | `/new` | 开启新会话 |
 | `/exit` | 退出 |
 
