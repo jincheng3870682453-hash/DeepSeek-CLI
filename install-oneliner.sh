@@ -1,42 +1,63 @@
 #!/usr/bin/env bash
-# DeepSeek CLI — one-line installer (Linux / macOS / WSL)
-# Usage:
+# DeepSeek CLI — true one-line installer (Linux / macOS / WSL)
+# Zero prerequisites: if Node.js is missing it downloads a portable Node
+# automatically. Usage:
 #   curl -fsSL https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.sh | bash
 set -e
 
 REPO="jincheng3870682453-hash/DeepSeek-CLI"
 BRANCH="master"
 ARCHIVE="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
+NODE_VERSION="v22.23.2"
+BASE_DIR="${DEEPSEEK_CLI_HOME:-$HOME/.deepseek-cli}"
 
-echo "🐋 DeepSeek CLI 一键安装"
-echo "──────────────────────────"
+echo "🐋 DeepSeek CLI 一键安装（零依赖）"
+echo "──────────────────────────────"
 
-# 1. Node.js
-if ! command -v node >/dev/null 2>&1; then
-  echo "❌ 未找到 Node.js。请先安装：https://nodejs.org（LTS 即可）"
-  exit 1
+# 1. Node.js — 系统没有就自动下载便携版
+if command -v node >/dev/null 2>&1; then
+  echo "✓ Node.js: $(node --version)（系统自带）"
+else
+  echo "→ 未检测到 Node.js，自动下载便携版 $NODE_VERSION ..."
+  OS="$(uname -s)"
+  ARCH="$(uname -m)"
+  case "$OS-$ARCH" in
+    Linux-x86_64)  NODE_PKG="node-$NODE_VERSION-linux-x64" ;;
+    Linux-aarch64) NODE_PKG="node-$NODE_VERSION-linux-arm64" ;;
+    Darwin-x86_64) NODE_PKG="node-$NODE_VERSION-darwin-x64" ;;
+    Darwin-arm64)  NODE_PKG="node-$NODE_VERSION-darwin-arm64" ;;
+    *)
+      echo "❌ 不支持的系统/架构: $OS-$ARCH"
+      exit 1
+      ;;
+  esac
+  mkdir -p "$BASE_DIR"
+  curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/$NODE_PKG.tar.gz" -o "$BASE_DIR/node.tar.gz"
+  tar -xzf "$BASE_DIR/node.tar.gz" -C "$BASE_DIR"
+  rm -f "$BASE_DIR/node.tar.gz"
+  export PATH="$BASE_DIR/$NODE_PKG/bin:$PATH"
+  echo "✓ Node.js 便携版: $(node --version)"
 fi
-echo "✓ Node.js: $(node --version)"
 
 # 2. DeepSeek Harness (dsh)
 if ! command -v dsh >/dev/null 2>&1; then
   echo "→ 安装 DeepSeek Harness (dsh) ..."
   npm install -g @deepseek-ai/dsh
   if ! command -v dsh >/dev/null 2>&1; then
-    echo "❌ dsh 安装失败。请手动执行：npm install -g @deepseek-ai/dsh"
+    echo "❌ dsh 安装失败。请检查网络后重试：npm install -g @deepseek-ai/dsh"
     exit 1
   fi
 fi
 echo "✓ dsh 已就绪"
 
-# 3. 下载本仓库（临时目录）
+# 3. 下载本仓库
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 echo "→ 下载 DeepSeek-CLI ..."
-if ! curl -fsSL "$ARCHIVE" -o "$TMP/cli.tar.gz" 2>/dev/null; then
-  echo "❌ 下载失败（网络问题？）。可重试或手动：git clone https://github.com/$REPO.git"
+curl -fsSL "$ARCHIVE" -o "$TMP/cli.tar.gz" 2>/dev/null || {
+  echo "❌ 仓库下载失败（网络问题）。可重试或手动：git clone https://github.com/$REPO.git"
   exit 1
-fi
+}
 tar -xzf "$TMP/cli.tar.gz" -C "$TMP"
 SRC="$TMP/DeepSeek-CLI-$BRANCH"
 
@@ -67,6 +88,6 @@ case ":$PATH:" in
     ;;
 esac
 
-echo "──────────────────────────"
+echo "──────────────────────────────"
 echo "✅ 安装完成！运行 deepseek 开始使用 🐋"
 echo "（首次运行会引导配置 API Key）"
