@@ -435,6 +435,117 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 
 ---
 
+## ❓ 常见问题（FAQ）
+
+<details>
+<summary><b>🔑 API Key 去哪申请？怎么配置 / 更换？</b></summary>
+
+DeepSeek 开放平台：**https://platform.deepseek.com** → 登录 → 左侧「API Keys」→ 创建（`sk-` 开头）。
+
+- **首次运行**：CLI 自动检测到没有 Key，引导你输入（隐藏输入，只回显星号）
+- **更换**：对话里 `/config` → API Key 项重新输入；或直接编辑 `$DSH_HOME/.credentials.yaml`
+- Key 存在 `$DSH_HOME/.credentials.yaml`（与 DSH 网页版共用，已被 .gitignore 排除，不会提交到 git）
+
+</details>
+
+<details>
+<summary><b>🌐 代理怎么设置？代理挂了怎么办？</b></summary>
+
+CLI 启动时自动读取 `HTTP_PROXY` / `HTTPS_PROXY` 环境变量（无需任何参数）：
+
+```powershell
+# 设置（当前会话）
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+deepseek
+
+# 代理挂了 / 不想走代理：清掉再启动
+Remove-Item Env:HTTPS_PROXY, Env:HTTP_PROXY
+deepseek
+```
+
+Linux / WSL：`export HTTPS_PROXY=http://127.0.0.1:7890`；不用时 `unset HTTPS_PROXY HTTP_PROXY`。
+排查：先 `curl https://api.deepseek.com` 直连测试——不通是网络/代理问题，通了再走 CLI。
+
+</details>
+
+<details>
+<summary><b>🈶 WSL / Linux 下中文显示乱码怎么办？</b></summary>
+
+- **首选**：用 [Windows Terminal](https://aka.ms/terminal) 跑 WSL（默认 UTF-8，中文无压力）
+- 检查系统 locale：`echo $LANG`，确保是 `*.UTF-8`（如 `zh_CN.UTF-8`）；不对就 `export LANG=zh_CN.UTF-8`
+- 传统 cmd 窗口：先执行 `chcp 65001` 切到 UTF-8 代码页再启动
+- 字体：终端字体选支持中文的（如 Cascadia Mono / 微软雅黑）
+
+</details>
+
+<details>
+<summary><b>🛡️ 提示"权限不足 / 需要确认"怎么办？</b></summary>
+
+三种权限模式（对话里 `/mode` 实时切换）：
+
+| 模式 | 行为 |
+|---|---|
+| `read-only` | 只能读，不能改文件（最安全） |
+| `workspace-write` | 可读写**工作区内**文件；更大范围操作需确认（默认） |
+| `danger-full-access` | 全权限，不再询问 |
+
+Agent 想改工作区外的文件被拦 → 确认路径没问题后 `/mode danger-full-access` 再试，或把工作目录切过去（`/cd`）。
+
+</details>
+
+<details>
+<summary><b>⏳ 退出时卡住不动？</b></summary>
+
+退出流程会先落盘会话数据，随后**最多 0.3 秒强制退出**——等 1 秒没反应直接按 `Ctrl+C` 兜底，不会损坏数据。
+（极少数情况下引擎后台服务句柄未释放，属已知设计，不影响会话内容。）
+
+</details>
+
+<details>
+<summary><b>🧹 怎么更新到最新版？</b></summary>
+
+```powershell
+# 一行安装用户：重跑一次安装命令即可（自动重新拉取仓库 + 覆盖 profile）
+irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.ps1 | iex
+
+# 手动安装用户：进仓库 pull + 重新复制 profile
+git -C DeepSeek-CLI pull
+xcopy /E /I /Y DeepSeek-CLI\profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
+```
+
+</details>
+
+<details>
+<summary><b>💾 数据都存在哪？想备份 / 搬家？</b></summary>
+
+**全部数据都在 `$DSH_HOME`（默认 `~/.dsh`）**：配置、会话、日志、凭据、自定义 Skill/Preset。备份 = 整个目录复制一份；搬家 = 拷到新机器的同一位置。
+
+```powershell
+Copy-Item "$env:USERPROFILE\.dsh" "D:\backup-dsh" -Recurse
+```
+
+</details>
+
+<details>
+<summary><b>🚫 报错 429 / 请求被限流怎么办？</b></summary>
+
+DeepSeek API 按账号限流。处理：
+1. 稍等十几秒重试
+2. 检查 [platform.deepseek.com](https://platform.deepseek.com) 账户余额 / 套餐是否耗尽
+3. `/model` 换更轻量的模型（如 `deepseek-v4-flash`）降低消耗
+4. `--verbose` 看回合 token 消耗，确认不是单次请求过大
+
+</details>
+
+<details>
+<summary><b>❓ 命令输入没反应 / 不识别？</b></summary>
+
+- 命令必须以 `/` 开头：`/help` 查看全部命令
+- 菜单开着时会吞掉普通输入（先选完菜单再打字）
+- 命令拼错会提示「未知命令」：`/config` `/mode` `/model` `/cd` `/think` `/effort` `/preset` `/lang` `/busy` `/skills` `/new` `/exit`
+
+</details>
+
 ## 📄 许可证
 
 本项目采用 **GNU Affero General Public License v3 或更高版本（AGPL-3.0-or-later）**：[LICENSE](LICENSE)
@@ -466,6 +577,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 - 🎨 **版面优化**：顶部 35 行鲸鱼 ASCII 艺术移至 [`assets/whale.txt`](assets/whale.txt)（终端启动画面不变），README 首屏更清爽
 - 📸 **真实终端截图**：演示章节新增 [`assets/demo-terminal.png`](assets/demo-terminal.png)（892×951，仅 20KB，加载快），动态 SVG 演示保留在下
 - ⚠️ **免责声明**：README 顶部新增中英双语"非官方社区项目"声明（与 DeepSeek 无关联、未经认可）；项目定位处标注 Harness 为 MIT（`Copyright (c) 2026 DeepSeek`），本仓库交互层原创、整体 AGPL 发布
+- ❓ **常见问题（FAQ）**：新增 9 条高频痛点问答（`<details>` 折叠）——API Key 申请/更换、代理设置与故障、WSL 中文乱码、权限不足、退出卡住、更新方法、数据备份搬家、429 限流、命令无反应
 
 ### v1.3.0（2026-08）— 工程化重构
 
