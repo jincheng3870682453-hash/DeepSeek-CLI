@@ -27,7 +27,7 @@ import { SessionId } from "@deepseek-ai/dsh-session";
 /** Stable Cordis plugin name. */
 const name = "cli-runner";
 /** Core services required before the interactive loop can start. */
-const inject = ["agentDefaultModel", "agents", "sessions", "llm", "permissionPresets"];
+const inject = ["agentDefaultModel", "agents", "sessions", "llm", "permissionPresets", "agentPresets", "skills"];
 
 const Config = z.object({
 	/** Show the startup wizard on launch (set false to go straight to chat). */
@@ -139,11 +139,73 @@ const HELP = `
 ${"─".repeat(46)}
   /config  打开配置向导      /mode   切换权限模式
   /cd      切换工作目录      /model  切换模型
-  /think   显示思考过程      /new    开启新会话
+  /think   显示思考过程      /effort 思考强度
+  /preset  Agent 预设        /lang   语言
+  /busy    繁忙时行为        /plugins 插件列表
+  /skills  Skill 列表        /new    开启新会话
   /exit    退出（Ctrl+C 也可）
 ${"─".repeat(46)}
   直接输入任意文字即可对话 · 同一会话会记住上下文
 `;
+
+/** UI strings for the two supported languages (core surfaces). */
+const I18N = {
+	zh: {
+		bannerSub: "DeepSeek Harness · 交互式命令行 · v0.1.0-rc.6",
+		bannerHint: "输入消息直接对话 ·  /config 配置 ·  /help 帮助 ·  /exit 退出",
+		menuTitle: "启动配置",
+		menuMode: "权限模式",
+		menuCwd: "工作目录",
+		menuModel: "模型",
+		menuThink: "显示思考过程",
+		menuKey: "API Key",
+		menuAdvanced: "⚙ 高级设置",
+		menuStart: "▶ 开始对话",
+		advTitle: "高级设置",
+		advEffort: "思考强度",
+		advPreset: "Agent 预设",
+		advLang: "语言",
+		advBusy: "繁忙时行为",
+		advPlugins: "插件列表（只读）",
+		advSkills: "Skill 列表（只读）",
+		navHint: "↑↓ 选择 · Enter 确认 · 数字直接选 · q 返回",
+		curLabel: "当前",
+		on: "开",
+		off: "关",
+		configured: "已配置",
+		notConfigured: "未配置"
+	},
+	en: {
+		bannerSub: "DeepSeek Harness · Interactive CLI · v0.1.0-rc.6",
+		bannerHint: "Type to chat ·  /config ·  /help ·  /exit",
+		menuTitle: "Startup Config",
+		menuMode: "Permission",
+		menuCwd: "Working Dir",
+		menuModel: "Model",
+		menuThink: "Show Reasoning",
+		menuKey: "API Key",
+		menuAdvanced: "⚙ Advanced",
+		menuStart: "▶ Start Chat",
+		advTitle: "Advanced",
+		advEffort: "Reasoning Effort",
+		advPreset: "Agent Preset",
+		advLang: "Language",
+		advBusy: "When Busy",
+		advPlugins: "Plugins (read-only)",
+		advSkills: "Skills (read-only)",
+		navHint: "↑↓ select · Enter confirm · digits direct · q back",
+		curLabel: "current",
+		on: "on",
+		off: "off",
+		configured: "configured",
+		notConfigured: "not set"
+	}
+};
+
+function makeT(language) {
+	const dict = I18N[language] ?? I18N.zh;
+	return (key) => dict[key] ?? I18N.zh[key] ?? key;
+}
 
 /** Localized labels for the permission presets (internal values stay English). */
 const MODE_LABELS = {
@@ -169,10 +231,14 @@ function loadSettings() {
 			provider: typeof raw.provider === "string" ? raw.provider : "deepseek-official",
 			model: typeof raw.model === "string" ? raw.model : "deepseek-v4-flash",
 			showReasoning: raw.showReasoning === true,
+			effort: typeof raw.effort === "string" ? raw.effort : "high",
+			preset: typeof raw.preset === "string" ? raw.preset : "standard",
+			language: typeof raw.language === "string" ? raw.language : "zh",
+			busyAction: typeof raw.busyAction === "string" ? raw.busyAction : "queue",
 			cwdHistory: Array.isArray(raw.cwdHistory) ? raw.cwdHistory.filter((p) => typeof p === "string" && existsSync(p)).slice(0, 10) : []
 		};
 	} catch {
-		return { mode: "workspace-write", cwd: process.cwd(), provider: "deepseek-official", model: "deepseek-v4-flash", showReasoning: false, cwdHistory: [] };
+		return { mode: "workspace-write", cwd: process.cwd(), provider: "deepseek-official", model: "deepseek-v4-flash", showReasoning: false, effort: "high", preset: "standard", language: "zh", busyAction: "queue", cwdHistory: [] };
 	}
 }
 
@@ -296,6 +362,7 @@ async function run(ctx, config, io) {
 	const c = makePalette(tty);
 
 	let settings = loadSettings();
+	let t = makeT(settings.language);
 
 	// ---- input queue -------------------------------------------------------
 	const rl = createInterface({ input: io.stdin, output: io.stdout });
@@ -434,7 +501,7 @@ async function run(ctx, config, io) {
 			const arrow = selected ? c.cyan("❯") : c.dim(" ");
 			lines.push(` ${arrow} ${opt.label}`);
 		}
-		lines.push(c.dim("↑↓ 选择 · Enter 确认 · 数字直接选 · q 返回"));
+		lines.push(c.dim(t("navHint")));
 		return lines;
 	};
 	const clearMenuArea = () => {
@@ -494,6 +561,11 @@ async function run(ctx, config, io) {
 				if (menuOptions[idx] !== void 0) closeMenu(menuOptions[idx]);
 			}
 			return; // consume every key while a menu is open
+		}
+		// --- busy mode: interrupt-on-input (when configured) ---
+		if (busy && settings.busyAction === "interrupt") {
+			interruptTurn();
+			return;
 		}
 		// --- normal chat mode: ESC behaves like Ctrl+C ---
 		if (key.name === "escape" && !exiting) {
@@ -592,14 +664,33 @@ async function run(ctx, config, io) {
 	async function createAgentFor() {
 		const selection = {
 			provider: settings.provider,
-			model: settings.model
+			model: settings.model,
+			reasoningEffort: settings.effort === "off" ? "off" : settings.effort
 		};
 		const { agent: next } = await agents.create({
 			sessionId: SessionId(`session-${randomUUID()}`),
 			meta: { cwd: settings.cwd },
 			agentOptions: selection,
-			setup: (agentCtx) => {
+			setup: async (agentCtx) => {
 				installModelSelection(agentCtx, { current: selection, assembled: void 0 });
+				// Apply the chosen agent preset (tools + prompt sections) if the
+				// roster is composed.
+				const presets = ctx.get("agentPresets");
+				if (presets !== void 0) {
+					try {
+						const preset = await presets.resolve(settings.preset);
+						if (preset !== void 0 && preset.broken === void 0) {
+							await presets.mount(agentCtx, settings.preset);
+						}
+					} catch {
+						// unknown/broken preset: fall back to the roster default
+						try {
+							await presets.mount(agentCtx);
+						} catch {
+							// no roster at all
+						}
+					}
+				}
 			}
 		});
 		await next.whenIdle();
@@ -656,9 +747,9 @@ async function run(ctx, config, io) {
 	}
 	io.stdout.write(c.blue(WHALE) + "\n");
 	io.stdout.write(c.blue(TITLE) + "\n");
-	io.stdout.write(`${c.sky("DeepSeek Harness")}${c.dim(" · 交互式命令行 · v0.1.0-rc.6")}\n`);
+	io.stdout.write(`${c.sky(t("bannerSub"))}\n`);
 	io.stdout.write(`${c.dim("─".repeat(52))}\n`);
-	io.stdout.write(`${c.dim("输入消息直接对话 ·  /config 配置 ·  /help 帮助 ·  /exit 退出")}\n\n`);
+	io.stdout.write(`${c.dim(t("bannerHint"))}\n\n`);
 
 	// Probe for ANSI cursor control before the wizard (TTY only).
 	if (tty) vt = await probeVt();
@@ -684,10 +775,25 @@ async function run(ctx, config, io) {
 
 	// ---- startup wizard -----------------------------------------------------
 	const runWizard = async () => {
+		// Discover models across every configurable provider (deepseek-official,
+		// pi-ai, …), tagged with their provider for the picker.
 		let models = [];
 		try {
 			if (llm !== void 0) {
-				models = await llm.listModels(settings.provider);
+				const providers = llm.listConfigurableProviders();
+				for (const p of providers) {
+					try {
+						const ms = await llm.listModels(p.provider);
+						models.push(...ms.map((m) => ({
+							provider: p.provider,
+							providerName: p.displayName ?? p.provider,
+							id: m.id,
+							name: m.name
+						})));
+					} catch {
+						// provider without a live adapter — skip its models
+					}
+				}
 			}
 		} catch {
 			models = [];
@@ -697,14 +803,47 @@ async function run(ctx, config, io) {
 
 		// -------- arrow-key wizard (VT terminals) --------
 		if (vt) {
+			const effortName = (e) => ({ off: "关闭（快速）", high: "深度思考", max: "极致思考" })[e] ?? e;
+			const langName = (l) => (l === "zh" ? "中文" : "English");
+			const busyName = (b) => (b === "queue" ? "排队发送" : "打断当前回答");
+			const listPlugins = () => {
+				const loader = ctx.get("loader");
+				if (loader === void 0 || typeof loader.entries !== "function") {
+					io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+					return;
+				}
+				const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
+				io.stdout.write(`${c.dim("已加载插件：")}\n`);
+				names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
+			};
+			const listSkills = async () => {
+				const skills = ctx.get("skills");
+				if (skills === void 0) {
+					io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+					return;
+				}
+				try {
+					const items = await skills.list({ cwd: settings.cwd });
+					if (items.length === 0) {
+						io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+						return;
+					}
+					io.stdout.write(`${c.dim("可用 Skill：")}\n`);
+					items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
+				} catch {
+					io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+				}
+			};
+
 			while (true) {
-				const mainPick = await pickFromMenu("启动配置", [
-					{ label: `${padCjk("权限模式", 12)}${modeName(settings.mode)}`, value: "mode" },
-					{ label: `${padCjk("工作目录", 12)}${settings.cwd}`, value: "cwd" },
-					{ label: `${padCjk("模型", 14)}${modelLabel(settings.model)} (${settings.model})`, value: "model" },
-					{ label: `${padCjk("显示思考过程", 14)}${settings.showReasoning ? "开" : "关"}`, value: "think" },
-					{ label: `${padCjk("API Key", 12)}${apiKeyConfigured() ? "已配置" : "未配置"}`, value: "apikey" },
-					{ label: "▶ 开始对话", value: "start" }
+				const mainPick = await pickFromMenu(t("menuTitle"), [
+					{ label: `${padCjk(t("menuMode"), 12)}${modeName(settings.mode)}`, value: "mode" },
+					{ label: `${padCjk(t("menuCwd"), 12)}${settings.cwd}`, value: "cwd" },
+					{ label: `${padCjk(t("menuModel"), 14)}${modelLabel(settings.model)} (${settings.model})`, value: "model" },
+					{ label: `${padCjk(t("menuThink"), 14)}${settings.showReasoning ? t("on") : t("off")}`, value: "think" },
+					{ label: `${padCjk(t("menuKey"), 12)}${apiKeyConfigured() ? t("configured") : t("notConfigured")}`, value: "apikey" },
+					{ label: t("menuAdvanced"), value: "advanced" },
+					{ label: t("menuStart"), value: "start" }
 				]);
 				if (mainPick === null) {
 					exiting = true;
@@ -712,6 +851,75 @@ async function run(ctx, config, io) {
 					return null;
 				}
 				if (mainPick.value === "start") return settings;
+
+				if (mainPick.value === "advanced") {
+					const advPick = await pickFromMenu(t("advTitle"), [
+						{ label: `${padCjk(t("advEffort"), 12)}${effortName(settings.effort)}`, value: "effort" },
+						{ label: `${padCjk(t("advPreset"), 12)}${settings.preset}`, value: "preset" },
+						{ label: `${padCjk(t("advLang"), 14)}${langName(settings.language)}`, value: "language" },
+						{ label: `${padCjk(t("advBusy"), 12)}${busyName(settings.busyAction)}`, value: "busy" },
+						{ label: t("advPlugins"), value: "plugins" },
+						{ label: t("advSkills"), value: "skills" }
+					]);
+					if (advPick === null) continue;
+					if (advPick.value === "effort") {
+						const effPick = await pickFromMenu("思考强度", [
+							{ label: `${padCjk("关闭", 12)}快速响应（不思考）`, value: "off" },
+							{ label: `${padCjk("深度思考", 12)}high（默认，质量更好）`, value: "high" },
+							{ label: `${padCjk("极致思考", 12)}max（最强但最慢）`, value: "max" }
+						]);
+						if (effPick === null) continue;
+						settings.effort = effPick.value;
+						saveSettings(settings);
+						io.stdout.write(`${c.green(`✓ 思考强度：${effortName(settings.effort)}`)}\n`);
+					} else if (advPick.value === "preset") {
+						const presets = ctx.get("agentPresets");
+						let items = [{ label: "standard（默认）", value: "standard" }];
+						if (presets !== void 0) {
+							try {
+								const list = await presets.list();
+								if (list.length > 0) {
+									items = list.map((p) => ({
+										label: `${p.id}${p.broken !== void 0 ? c.red(`  （损坏：${p.broken}）`) : ""}${p.id === settings.preset ? "  ← 当前" : ""}`,
+										value: p.id
+									}));
+								}
+							} catch {
+								// fall back to default list
+							}
+						}
+						const presetPick = await pickFromMenu("Agent 预设", items);
+						if (presetPick === null) continue;
+						settings.preset = presetPick.value;
+						saveSettings(settings);
+						await rebuildAgent();
+						io.stdout.write(`${c.green(`✓ Agent 预设：${settings.preset}`)}${c.dim("（已开启新会话）")}\n`);
+					} else if (advPick.value === "language") {
+						const langPick = await pickFromMenu("语言 / Language", [
+							{ label: "中文（简体）", value: "zh" },
+							{ label: "English", value: "en" }
+						]);
+						if (langPick === null) continue;
+						settings.language = langPick.value;
+						t = makeT(settings.language);
+						saveSettings(settings);
+						io.stdout.write(`${c.green(`✓ 语言：${langName(settings.language)}`)}\n`);
+					} else if (advPick.value === "busy") {
+						const busyPick = await pickFromMenu("繁忙时行为（AI 回答中发消息）", [
+							{ label: `${padCjk("排队发送", 12)}回答完成后依次处理`, value: "queue" },
+							{ label: `${padCjk("打断当前回答", 12)}立即中断并处理新消息`, value: "interrupt" }
+						]);
+						if (busyPick === null) continue;
+						settings.busyAction = busyPick.value;
+						saveSettings(settings);
+						io.stdout.write(`${c.green(`✓ 繁忙时行为：${busyName(settings.busyAction)}`)}\n`);
+					} else if (advPick.value === "plugins") {
+						listPlugins();
+					} else if (advPick.value === "skills") {
+						await listSkills();
+					}
+					continue;
+				}
 
 				if (mainPick.value === "mode") {
 					const modePick = await pickFromMenu("是否允许工作区之外的操作？", availableModes.map((m) => ({
@@ -769,17 +977,17 @@ async function run(ctx, config, io) {
 						continue;
 					}
 					const modelPick = await pickFromMenu("模型", models.map((m) => ({
-						label: `${m.name}  ${m.id}${m.id === settings.model ? "  ← 当前" : ""}`,
+						label: `${m.name}  ${c.dim(`${m.id}`)}${c.dim(`  [${m.providerName}]`)}${m.provider === settings.provider && m.id === settings.model ? c.dim("  ← 当前") : ""}`,
 						value: m
 					})));
 					if (modelPick === null) continue;
 					const next = modelPick.value;
-					if (next.id !== settings.model) {
+					if (next.id !== settings.model || next.provider !== settings.provider) {
 						settings.model = next.id;
 						settings.provider = next.provider;
 						saveSettings(settings);
 						await rebuildAgent();
-						io.stdout.write(`${c.green(`✓ 模型：${next.name} (${next.id})`)}\n`);
+						io.stdout.write(`${c.green(`✓ 模型：${next.name} (${next.id})`)}${c.dim(`  [${next.providerName}]`)}\n`);
 					}
 				} else if (mainPick.value === "think") {
 					settings.showReasoning = !settings.showReasoning;
@@ -803,16 +1011,17 @@ async function run(ctx, config, io) {
 
 		// -------- numbered-input wizard (non-VT / piped) --------
 		while (true) {
-			io.stdout.write(`\n${c.dim("┌─")}${c.white(" 启动配置 ")}${c.dim("─".repeat(36))}${c.dim("┐")}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("1.")} ${c.white(padCjk("权限模式", 12))}${c.yellow(modeName(settings.mode))}${c.dim(`  ${settings.mode}`)}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("2.")} ${c.white(padCjk("工作目录", 12))}${c.sky(settings.cwd)}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("3.")} ${c.white(padCjk("模型", 14))}${c.sky(`${modelLabel(settings.model)} (${settings.model})`)}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("4.")} ${c.white(padCjk("显示思考过程", 14))}${settings.showReasoning ? c.green("开") : c.dim("关")}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("5.")} ${c.white(padCjk("API Key", 12))}${apiKeyConfigured() ? c.green("已配置") : c.red("未配置")}\n`);
+			io.stdout.write(`\n${c.dim("┌─")}${c.white(` ${t("menuTitle")} `)}${c.dim("─".repeat(36))}${c.dim("┐")}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("1.")} ${c.white(padCjk(t("menuMode"), 12))}${c.yellow(modeName(settings.mode))}${c.dim(`  ${settings.mode}`)}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("2.")} ${c.white(padCjk(t("menuCwd"), 12))}${c.sky(settings.cwd)}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("3.")} ${c.white(padCjk(t("menuModel"), 14))}${c.sky(`${modelLabel(settings.model)} (${settings.model})`)}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("4.")} ${c.white(padCjk(t("menuThink"), 14))}${settings.showReasoning ? c.green(t("on")) : c.dim(t("off"))}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("5.")} ${c.white(padCjk(t("menuKey"), 12))}${apiKeyConfigured() ? c.green(t("configured")) : c.red(t("notConfigured"))}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("6.")} ${c.white(t("menuAdvanced"))}\n`);
 			io.stdout.write(`${c.dim("│")} ${c.dim("─".repeat(40))}\n`);
-			io.stdout.write(`${c.dim("│")} ${c.cyan("6.")} ${c.green("▶ 开始对话")}\n`);
+			io.stdout.write(`${c.dim("│")} ${c.cyan("7.")} ${c.green(t("menuStart"))}\n`);
 			io.stdout.write(`${c.dim("└")}${c.dim("─".repeat(42))}${c.dim("┘")}\n`);
-			io.stdout.write(`${c.dim("选择 1-6，回车直接开始对话：")}`);
+			io.stdout.write(`${c.dim(`选择 1-7，回车直接开始对话：`)}`);
 
 			const raw = await nextLine();
 			if (raw === null) {
@@ -823,8 +1032,8 @@ async function run(ctx, config, io) {
 			const choice = raw.trim();
 			if (choice === "") return settings;
 			const num = Number.parseInt(choice, 10);
-			if (!Number.isNaN(num) && num >= 1 && num <= 6) {
-				if (num === 6) return settings;
+			if (!Number.isNaN(num) && num >= 1 && num <= 7) {
+				if (num === 7) return settings;
 				if (num === 1) {
 					io.stdout.write(`\n${c.dim("是否允许工作区之外的操作？")}\n`);
 					availableModes.forEach((m, i) => {
@@ -908,6 +1117,86 @@ async function run(ctx, config, io) {
 						}
 					} else {
 						io.stdout.write(`${c.dim("已取消")}\n`);
+					}
+				} else if (num === 6) {
+					// Advanced settings (numbered form)
+					io.stdout.write(`\n${c.white("高级设置：")}\n`);
+					io.stdout.write(`  ${c.cyan("1.")} ${c.white("思考强度")} ${c.dim(`（当前：${({ off: "关闭", high: "深度思考", max: "极致思考" })[settings.effort] ?? settings.effort}）`)}\n`);
+					io.stdout.write(`  ${c.cyan("2.")} ${c.white("Agent 预设")} ${c.dim(`（当前：${settings.preset}）`)}\n`);
+					io.stdout.write(`  ${c.cyan("3.")} ${c.white("语言")} ${c.dim(`（当前：${settings.language === "zh" ? "中文" : "English"}）`)}\n`);
+					io.stdout.write(`  ${c.cyan("4.")} ${c.white("繁忙时行为")} ${c.dim(`（当前：${settings.busyAction === "queue" ? "排队发送" : "打断当前回答"}）`)}\n`);
+					io.stdout.write(`  ${c.cyan("5.")} ${c.white("插件列表（只读）")}\n`);
+					io.stdout.write(`  ${c.cyan("6.")} ${c.white("Skill 列表（只读）")}\n`);
+					const adv = (await ask(c.dim("选择编号：")) ?? "").trim();
+					if (adv === "1") {
+						io.stdout.write(`\n${c.dim("思考强度：")}\n  ${c.cyan("1.")} ${c.white("关闭（快速）")}\n  ${c.cyan("2.")} ${c.white("深度思考（默认）")}\n  ${c.cyan("3.")} ${c.white("极致思考")}\n`);
+						const pick = (await ask(c.dim("选择编号：")) ?? "").trim();
+						const map = { 1: "off", 2: "high", 3: "max" };
+						if (map[pick] !== void 0) {
+							settings.effort = map[pick];
+							saveSettings(settings);
+							await rebuildAgent();
+							io.stdout.write(`${c.green(`✓ 思考强度：${({ off: "关闭", high: "深度思考", max: "极致思考" })[settings.effort]}`)}${c.dim("（已开启新会话）")}\n`);
+						}
+					} else if (adv === "2") {
+						const presets = ctx.get("agentPresets");
+						io.stdout.write(`\n${c.dim("Agent 预设（直接输入 id）：")}\n`);
+						if (presets !== void 0) {
+							try {
+								const list = await presets.list();
+								list.forEach((p) => io.stdout.write(`  ${c.white(p.id)}${p.broken !== void 0 ? c.red(`  （损坏）`) : ""}\n`));
+							} catch {
+								// ignore
+							}
+						}
+						io.stdout.write(`  ${c.white("standard")}\n`);
+						const pick = (await ask(c.dim("预设 id：")) ?? "").trim();
+						if (pick !== "") {
+							settings.preset = pick;
+							saveSettings(settings);
+							await rebuildAgent();
+							io.stdout.write(`${c.green(`✓ Agent 预设：${pick}`)}${c.dim("（已开启新会话）")}\n`);
+						}
+					} else if (adv === "3") {
+						const pick = (await ask(c.dim("语言（zh / en）：")) ?? "").trim();
+						if (pick === "zh" || pick === "en") {
+							settings.language = pick;
+							t = makeT(settings.language);
+							saveSettings(settings);
+							io.stdout.write(`${c.green(`✓ 语言：${pick === "zh" ? "中文" : "English"}`)}\n`);
+						}
+					} else if (adv === "4") {
+						const pick = (await ask(c.dim("繁忙时行为（queue / interrupt）：")) ?? "").trim();
+						if (pick === "queue" || pick === "interrupt") {
+							settings.busyAction = pick;
+							saveSettings(settings);
+							io.stdout.write(`${c.green(`✓ 繁忙时行为：${pick === "queue" ? "排队发送" : "打断当前回答"}`)}\n`);
+						}
+					} else if (adv === "5") {
+						const loader = ctx.get("loader");
+						if (loader !== void 0 && typeof loader.entries === "function") {
+							const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
+							io.stdout.write(`${c.dim(`已加载插件（${names.length}）：`)}\n`);
+							names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
+						} else {
+							io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+						}
+					} else if (adv === "6") {
+						const skills = ctx.get("skills");
+						if (skills !== void 0) {
+							try {
+								const items = await skills.list({ cwd: settings.cwd });
+								if (items.length === 0) io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+								else {
+									io.stdout.write(`${c.dim(`可用 Skill（${items.length}）：`)}\n`);
+									items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
+								}
+							} catch {
+								io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+							}
+						} else {
+							io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+						}
 					}
 				}
 				continue;
@@ -1093,6 +1382,102 @@ async function run(ctx, config, io) {
 					else settings.showReasoning = !settings.showReasoning;
 					saveSettings(settings);
 					io.stdout.write(`${c.green(`✓ 显示思考过程：${settings.showReasoning ? "开" : "关"}`)}\n`);
+					continue;
+				}
+				case "effort": {
+					const names = { off: "关闭（快速）", high: "深度思考", max: "极致思考" };
+					if (arg === "") {
+						io.stdout.write(`${c.dim("当前思考强度")} ${c.white(names[settings.effort] ?? settings.effort)}${c.dim(`（可选：off / high / max）`)}\n`);
+						continue;
+					}
+					if (names[arg] !== void 0) {
+						settings.effort = arg;
+						saveSettings(settings);
+						await rebuildAgent();
+						io.stdout.write(`${c.green(`✓ 思考强度：${names[arg]}`)}${c.dim("（已开启新会话）")}\n`);
+					} else {
+						io.stdout.write(`${c.red(`✗ 未知强度：${arg}`)}${c.dim(`（可选：off / high / max）`)}\n`);
+					}
+					continue;
+				}
+				case "preset": {
+					const presets = ctx.get("agentPresets");
+					if (arg === "") {
+						io.stdout.write(`${c.dim("当前 Agent 预设")} ${c.white(settings.preset)}\n`);
+						if (presets !== void 0) {
+							try {
+								const list = await presets.list();
+								io.stdout.write(`${c.dim(`可选：${list.map((p) => p.id).join(" / ")}`)}\n`);
+							} catch {
+								// ignore
+							}
+						}
+						continue;
+					}
+					settings.preset = arg;
+					saveSettings(settings);
+					await rebuildAgent();
+					io.stdout.write(`${c.green(`✓ Agent 预设：${arg}`)}${c.dim("（已开启新会话）")}\n`);
+					continue;
+				}
+				case "lang":
+				case "language": {
+					if (arg === "") {
+						io.stdout.write(`${c.dim("当前语言")} ${c.white(settings.language === "zh" ? "中文" : "English")}\n`);
+						continue;
+					}
+					if (arg === "zh" || arg === "en") {
+						settings.language = arg;
+						t = makeT(settings.language);
+						saveSettings(settings);
+						io.stdout.write(`${c.green(`✓ 语言：${settings.language === "zh" ? "中文" : "English"}`)}\n`);
+					} else {
+						io.stdout.write(`${c.red(`✗ 未知语言：${arg}`)}${c.dim(`（可选：zh / en）`)}\n`);
+					}
+					continue;
+				}
+				case "busy": {
+					if (arg === "") {
+						io.stdout.write(`${c.dim("繁忙时行为")} ${c.white(settings.busyAction === "queue" ? "排队发送" : "打断当前回答")}${c.dim(`（可选：queue / interrupt）`)}\n`);
+						continue;
+					}
+					if (arg === "queue" || arg === "interrupt") {
+						settings.busyAction = arg;
+						saveSettings(settings);
+						io.stdout.write(`${c.green(`✓ 繁忙时行为：${arg === "queue" ? "排队发送" : "打断当前回答"}`)}\n`);
+					} else {
+						io.stdout.write(`${c.red(`✗ 未知：${arg}`)}${c.dim(`（可选：queue / interrupt）`)}\n`);
+					}
+					continue;
+				}
+				case "plugins": {
+					const loader = ctx.get("loader");
+					if (loader === void 0 || typeof loader.entries !== "function") {
+						io.stdout.write(`${c.dim("插件列表不可用")}\n`);
+						continue;
+					}
+					const names = [...loader.entries()].map((e) => e.options.name).filter(Boolean);
+					io.stdout.write(`${c.dim(`已加载插件（${names.length}）：`)}\n`);
+					names.forEach((n) => io.stdout.write(`  ${c.white(n)}\n`));
+					continue;
+				}
+				case "skills": {
+					const skills = ctx.get("skills");
+					if (skills === void 0) {
+						io.stdout.write(`${c.dim("Skill 服务不可用")}\n`);
+						continue;
+					}
+					try {
+						const items = await skills.list({ cwd: settings.cwd });
+						if (items.length === 0) {
+							io.stdout.write(`${c.dim("没有可用 Skill")}\n`);
+							continue;
+						}
+						io.stdout.write(`${c.dim(`可用 Skill（${items.length}）：`)}\n`);
+						items.forEach((s) => io.stdout.write(`  ${c.white(s.name)}${s.description ? c.dim(`  ${s.description}`) : ""}\n`));
+					} catch {
+						io.stdout.write(`${c.dim("Skill 列表不可用")}\n`);
+					}
 					continue;
 				}
 				case "new": {
