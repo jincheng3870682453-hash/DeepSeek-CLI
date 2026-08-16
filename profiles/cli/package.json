@@ -3,7 +3,7 @@
   "version": "1.3.1",
   "private": true,
   "type": "module",
-  "license": "AGPL-3.0",
+  "license": "AGPL-3.0-or-later",
   "dependencies": {},
   "dsh": {
     "profile": {

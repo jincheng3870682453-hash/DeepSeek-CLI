@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "DeepSeek CLI — 命令行里的 DeepSeek Agent（纯 CLI，无前端）",
-  "license": "AGPL-3.0",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
