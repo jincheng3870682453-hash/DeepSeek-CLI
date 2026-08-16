@@ -1,0 +1,32 @@
+# dsh cli profile patch — interactive terminal chat directly over dsh-base.
+# Mirrors the headless bundle (no Host, HTTP server, Web runtime, or browser
+# plugin) but replaces the one-shot runner with an interactive readline loop
+# that keeps one Agent/session alive across turns and streams tokens live.
+#
+# The runner module lives in this profile directory (cli-runner/index.js) and
+# is referenced relative to the profile tree's baseUrl.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+
+# The shared module-reload HMR row stays off; the launcher's watch-only
+# fallback still keeps the user patch layers live until the run exits.
+- id: hmr
+  disabled: true
+
+- id: tools
+  config:
+    # Keep the same temporary process-wide Code Mode opt-in as the Web surface.
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+- insert:
+    # Code Mode is a core execution capability, not a Web component.
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    # Interactive readline runner: reads messages from stdin, drives one
+    # Agent through the core registry, streams assistant text to stdout.
+    - id: cli-runner
+      name: './cli-runner/index.js'

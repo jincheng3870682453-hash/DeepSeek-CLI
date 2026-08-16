@@ -1,0 +1,17 @@
+# 敏感文件 — 绝不提交
+.credentials.yaml
+*.credentials.yaml
+cli-settings.json
+
+# 用户数据 / 日志
+*.log
+sessions/
+storages/
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node
+node_modules/
