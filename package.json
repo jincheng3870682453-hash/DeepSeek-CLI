@@ -1,0 +1,14 @@
+{
+  "name": "deepseek-cli",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "description": "DeepSeek CLI — 命令行里的 DeepSeek Agent（纯 CLI，无前端）",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

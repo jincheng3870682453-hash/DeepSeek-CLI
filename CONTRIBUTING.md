@@ -7,10 +7,14 @@
 
 ```
 profiles/cli/
-├── cli-runner/index.js   # 核心：readline 交互、配置向导、流式输出（唯一入口逻辑）
+├── cli-runner/
+│   ├── index.js   # 交互入口：readline、配置向导、流式输出、会话与命令
+│   ├── utils.js   # 纯函数：i18n 字典、CJK 显示宽度、路径/目录、skill/preset 模板
+│   └── config.js  # 持久化：cli-settings.json（用户偏好）与 .credentials.yaml（API Key）
 ├── cordis.patch.yml      # profile 补丁：挂载插件（agent-presets、code-runtime、cli-runner）
 ├── package.json          # profile 定义
 └── README.md
+test/                     # 单元测试（vitest）：utils.test.js / config.test.js
 bin/                      # 启动命令（deepseek / dsh-chat / dsh-ask 的 cmd + ps1）
 tools/gen-demo-svg.mjs    # README 演示图生成脚本
 ```
@@ -20,8 +24,10 @@ tools/gen-demo-svg.mjs    # README 演示图生成脚本
 1. 安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（提供 `dsh` 命令）
 2. 把本仓库的 `profiles/cli` 链接或复制到 `%USERPROFILE%\.dsh\profiles\cli`
 3. 运行 `deepseek`（或 `dsh --profile cli`）调试
+4. 改完跑测试：`npm install` 后 `npm test`（vitest，35 个用例覆盖 utils/config 纯函数）
 
-> 修改 `cli-runner/index.js` 后，若它以绝对路径被 profile 引用，改动即时生效（无需重装）。
+> 修改 `cli-runner/` 下的文件后，若它以绝对路径被 profile 引用，改动即时生效（无需重装）。
+> **注意**：`.dsh` 是运行环境、仓库是发布源——改完必须把改动**从 `.dsh` 同步回仓库**（反之会覆盖丢代码）。
 
 ## 规范
 
@@ -43,7 +49,7 @@ tools/gen-demo-svg.mjs    # README 演示图生成脚本
 ## 提交 PR
 
 1. Fork 本仓库，新建分支（如 `fix/menu-crash`）
-2. 本地验证：`deepseek` 启动、菜单导航、对话、退出均正常
+2. 本地验证：`npm test` 全绿 + `deepseek` 启动、菜单导航、对话、退出均正常
 3. 提交信息用英文或中文均可，写清楚变更
 4. 使用仓库内的 **PR 模板**（`.github/PULL_REQUEST_TEMPLATE.md`）填写
 5. 如果改了界面文案，说明中英文界面都测试过

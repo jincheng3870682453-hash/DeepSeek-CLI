@@ -1,4 +1,4 @@
-﻿# DeepSeek CLI — true one-line installer (Windows / PowerShell 5.1+)
+# DeepSeek CLI — true one-line installer (Windows / PowerShell 5.1+)
 # Zero prerequisites: if Node.js is missing it downloads a portable Node
 # automatically. Usage (run in PowerShell):
 #   irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.ps1 | iex
@@ -42,6 +42,14 @@ if (-not (Get-Command dsh -ErrorAction SilentlyContinue)) {
     }
 }
 Write-Host "✓ dsh 已就绪"
+
+# 2.5 引擎兼容性校验（基于 @deepseek-ai/dsh 0.1.x 开发验证）
+$DshVer = (& dsh --version 2>$null | Select-Object -First 1)
+$DshMm = ((($DshVer -split "-")[0] -split "\.") | Select-Object -First 2) -join "."   # "0.1.0-rc.6" -> "0.1"
+if ($DshMm -ne "0.1") {
+    Write-Host "⚠️ 检测到 dsh $DshVer —— 本 CLI 基于 dsh 0.1.x 开发验证" -ForegroundColor Yellow
+    Write-Host "   如遇兼容问题，请安装匹配版本：npm install -g @deepseek-ai/dsh@0.1.0-rc.6" -ForegroundColor Yellow
+}
 
 # 3. 下载仓库
 $Tmp = Join-Path $env:TEMP "deepseek-cli-install"

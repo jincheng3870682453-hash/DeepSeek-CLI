@@ -4,9 +4,9 @@
 
 **命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
-**v1.2.0** 🎉
+**v1.3.0** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.2.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Version](https://img.shields.io/badge/Version-1.3.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -141,6 +141,14 @@ xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 - 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
 - DeepSeek API Key（首次运行自动引导配置）
 
+> ### 🛡️ 引擎版本兼容性
+>
+> 本 CLI 基于 **`@deepseek-ai/dsh` 0.1.x**（开发验证版本 `0.1.0-rc.6`）开发。
+> 一行安装脚本（`install-oneliner.sh` / `.ps1`）会自动校验 `dsh --version`：
+> 检测到主版本不一致时给出提示，并建议安装匹配版本
+> `npm install -g @deepseek-ai/dsh@0.1.0-rc.6`。
+> 手工安装的用户也可随时用 `dsh --version` 自查。
+
 ### 使用
 
 ```powershell
@@ -216,7 +224,12 @@ deepseek
 
 ```
 DeepSeek-CLI/
-├── install.cmd / install.sh  # 一键安装（Windows / Linux-macOS）
+├── install.cmd / install.sh     # 一键安装（Windows / Linux-macOS）
+├── install-oneliner.sh / .ps1   # 一行安装（零依赖，含 dsh 版本校验）
+├── package.json                 # 开发依赖（vitest 单元测试）
+├── test/                        # 单元测试（vitest，纯函数全覆盖）
+│   ├── utils.test.js
+│   └── config.test.js
 ├── profiles/
 │   └── cli/             # dsh cli profile
 │       ├── package.json
@@ -224,7 +237,9 @@ DeepSeek-CLI/
 │       ├── cordis.patch.yml
 │       ├── pnpm-workspace.yaml
 │       └── cli-runner/
-│           └── index.js # 交互式 runner（核心逻辑）
+│           ├── index.js  # 交互式 runner（菜单 / 命令 / 会话）
+│           ├── utils.js  # i18n 字典、CJK 宽度、路径/目录辅助
+│           └── config.js # 设置与凭据读写（cli-settings.json / .credentials.yaml）
 └── bin/                 # 启动命令
     ├── deepseek.cmd / .ps1 / (bash)  # 主命令
     ├── dsh-chat.cmd / .ps1   # 兼容别名
@@ -257,16 +272,28 @@ cd DeepSeek-CLI
 deepseek
 ```
 
-核心逻辑（`cli-runner/index.js`）使用 Node 跨平台 API（readline / fs / path），
+核心逻辑（`cli-runner/`：`index.js` / `utils.js` / `config.js`）使用 Node 跨平台 API（readline / fs / path），
 路径统一用 `path.join` 处理，配置文件都在 `$DSH_HOME`（Linux 默认 `~/.dsh`），
 Windows 与 Linux 行为一致。
 
 ---
 
+## 🗂️ 两种配置，各司其职
+
+本项目有两类配置文件，**职责完全不同，别搞混**：
+
+| 文件 | 属于谁 | 内容 | 能不能改 |
+|---|---|---|---|
+| `profiles/cli/cordis.yml`（+ `cordis.patch.yml`） | **DSH 引擎** | 声明 profile 的插件装配（bundle、runtime、插件列表），由 DSH 的 loader 强制解析 | ❌ **不能改格式**——这是 DSH 引擎的约定，改了可能启动失败 |
+| `$DSH_HOME/cli-settings.json` | **本 CLI 自己** | 权限模式 / 工作目录 / 模型 / 思考显示 / 语言等用户偏好 | ✅ 随便改（或直接在向导里调，等价） |
+
+> **一句话**：`cordis.yml` 是"这台引擎装了什么插件"的装配清单（DSH 管）；`cli-settings.json` 是"我这个用户喜欢什么配置"的偏好文件（CLI 管）。
+> 想改 UI/行为 → 改 `cli-settings.json` 或运行向导；想改插件装配 → 才碰 `cordis.yml`。
+
 ## 🔒 配置与安全
 
 - **API Key**：`$DSH_HOME/.credentials.yaml`（与 DeepSeek Harness 网页版共用；**已被 .gitignore 排除，不会提交**）
-- **用户设置**：`$DSH_HOME/cli-settings.json`（权限模式 / 工作目录 / 模型 / 思考显示，同样被排除）
+- **用户设置**：`$DSH_HOME/cli-settings.json`（权限模式 / 工作目录 / 模型 / 思考显示，同样被排除；兼容 PowerShell 写入的 UTF-8 BOM）
 - **会话历史**：`$DSH_HOME/sessions/`，持久化保存，随时 `/new` 开启新会话
 
 ---
@@ -277,12 +304,19 @@ Windows 与 Linux 行为一致。
 
 ## 🤝 贡献
 
-想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/index.js`。
+想参与开发？请看 [CONTRIBUTING.md](CONTRIBUTING.md) —— 纯代码项目，改动集中在 `cli-runner/`（`index.js` / `utils.js` / `config.js`），纯函数改完跑 `npm test`。
 提交 PR 时请使用仓库内的 [PR 模板](.github/PULL_REQUEST_TEMPLATE.md)。
 
 ---
 
 ## 🏷️ 版本历史
+
+### v1.3.0（2026-08）— 工程化重构
+
+- 📦 **代码拆文件**：`cli-runner/index.js` 从 1955 行拆为 `index.js`（交互/菜单/会话）+ `utils.js`（i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助）+ `config.js`（设置与凭据读写），职责分明
+- 🧪 **单元测试**：引入 vitest，`test/utils.test.js` + `test/config.test.js` 共 35 个用例，覆盖 i18n 占位替换、CJK 显示宽度、密钥脱敏、路径展开、设置 BOM/损坏容错、凭据读写等纯函数；`npm test` 一键运行
+- 🛡️ **DSH 版本标注**：README 标明基于 `@deepseek-ai/dsh` 0.1.x（`0.1.0-rc.6`）开发验证；`install-oneliner.sh/.ps1` 安装时自动校验 `dsh --version` 主版本并提示匹配版本
+- 🗂️ **配置格式说明**：README 新增「两种配置，各司其职」——`cordis.yml` 是 DSH 引擎装配清单（不能改格式），`cli-settings.json` 是 CLI 用户偏好（随便改）
 
 ### v1.2.0（2026-08）— 脚本化与运维
 

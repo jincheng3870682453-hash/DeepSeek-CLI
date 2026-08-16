@@ -142,5 +142,8 @@ profiles/cli/
 ├── cordis.yml            # loader 根（空）
 ├── cordis.patch.yml      # 补丁：挂载 cli-runner 插件
 ├── pnpm-workspace.yaml
-└── cli-runner/index.js   # 交互式 runner（readline 循环 + 流式输出）
+└── cli-runner/
+    ├── index.js          # 交互式 runner（readline 循环 + 流式输出 + 菜单/命令）
+    ├── utils.js          # i18n 字典、CJK 宽度、路径与 skill/preset 目录辅助
+    └── config.js         # 设置与凭据读写（cli-settings.json / .credentials.yaml）
 ```

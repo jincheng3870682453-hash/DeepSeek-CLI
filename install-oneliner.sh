@@ -50,6 +50,14 @@ if ! command -v dsh >/dev/null 2>&1; then
 fi
 echo "✓ dsh 已就绪"
 
+# 2.5 引擎兼容性校验（基于 @deepseek-ai/dsh 0.1.x 开发验证）
+DSH_VER="$(dsh --version 2>/dev/null | head -n1)"
+DSH_MM="${DSH_VER%-*}"; DSH_MM="${DSH_MM%.*}"   # "0.1.0-rc.6" -> "0.1"
+if [ "$DSH_MM" != "0.1" ]; then
+  echo "⚠️ 检测到 dsh $DSH_VER —— 本 CLI 基于 dsh 0.1.x 开发验证"
+  echo "   如遇兼容问题，请安装匹配版本：npm install -g @deepseek-ai/dsh@0.1.0-rc.6"
+fi
+
 # 3. 下载本仓库
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

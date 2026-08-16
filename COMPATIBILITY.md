@@ -50,7 +50,7 @@
 
 **静态审查：**
 
-- 核心 `cli-runner/index.js` 使用 Node 跨平台 API（readline / fs / path / os）
+- 核心 `cli-runner/`（`index.js` / `utils.js` / `config.js`）使用 Node 跨平台 API（readline / fs / path / os）
 - 路径统一 `path.join`（无硬编码 `\`）——已全量检查（残留 0）
 - 无 `process.platform` 分支、无 Windows 专用调用
 - 配置/会话都在 `$DSH_HOME`（Linux 默认 `~/.dsh`）
