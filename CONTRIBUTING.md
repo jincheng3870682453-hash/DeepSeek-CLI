@@ -48,6 +48,36 @@ tools/gen-demo-svg.mjs    # README 演示图生成脚本
 - 代码注释用英文（与现有风格一致）
 - 用户可见文案在 i18n 字典中提供中文 + English
 
+## 实战示例：加一个新命令
+
+以加一个 `/clear`（清空当前输入行）为例，完整步骤：
+
+**1. 解析（`commands.js`）**——`parseCommand` 是通用解析器，**不用改**，它已经能把 `/clear` 拆成 `{ cmd: "clear", rest: [], arg: "" }`。
+
+**2. 执行（`cli-runner/index.js`）**——在主聊天循环的 `switch (cmd)` 里加一个 case：
+
+```js
+case "clear": {
+    io.stdout.write("\r\x1b[K");       // 清掉当前行
+    if (tty) io.stdout.write(c.cyan(config.prompt)); // 重画提示符
+    continue;
+}
+```
+
+**3. 文案（`utils.js`）**——如果要输出用户可见提示，在 `I18N.zh` / `I18N.en` 各加一条 key，用 `t("cleared")` 输出，不要硬编码。
+
+**4. 测试（`test/commands.test.js`）**——解析层是纯函数，顺手补一条：
+
+```js
+it("parses /clear", () => {
+    expect(parseCommand("/clear")).toEqual({ cmd: "clear", rest: [], arg: "" });
+});
+```
+
+**5. 验证**：`npm test` 全绿 → 手动 `deepseek` 里试 `/clear` → 同步 `.dsh` → push（CI 自动再跑一遍）。
+
+> 规律：**命令执行逻辑**在 `index.js` 的 `switch (cmd)`；**纯逻辑/解析**优先放 `commands.js` / `utils.js` 并写单测；**文案**必须走 i18n 字典。
+
 ## 提交 PR
 
 1. Fork 本仓库，新建分支（如 `fix/menu-crash`）

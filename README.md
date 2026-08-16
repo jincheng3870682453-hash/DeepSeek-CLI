@@ -82,6 +82,14 @@
 
 ## 🎯 项目定位
 
+### 为什么做这个？
+
+官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供的是 **Web 界面**（浏览器里配置模型、管理会话），但**缺少终端 CLI**——想不开浏览器、直接在一个 SSH 会话 / 服务器 / 终端窗口里用 DeepSeek Agent，就没有趁手的工具。
+
+这个项目就是补上这一块：**把 DSH 引擎装进命令行**，做成 Codex / Claude Code 风格的终端工具——配置向导、权限管理、流式对话全在终端里完成，服务器上无浏览器也能用，还能管道接进 cron / CI 自动化。
+
+### 项目形态
+
 **纯命令行（纯后端）项目** — 无 Web 前端、无浏览器界面、无图形化 GUI。
 
 与官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 共享同一套核心引擎
@@ -139,8 +147,9 @@ xcopy /E /I /Y profiles\cli "%USERPROFILE%\.dsh\profiles\cli"
 
 ### 前置条件
 
-- 已安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用）
-- DeepSeek API Key（首次运行自动引导配置）
+- **一行安装（推荐）**：什么都不用装——脚本自动检测并下载 Node.js、安装 DSH 引擎、拉取本仓库、装 profile、装命令，一条命令全搞定（见上方「⚡ 一行安装」）。
+- **手动安装**：才需要自己先装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（`dsh` 命令可用），再按下面的「方式一 / 方式二」操作。
+- DeepSeek API Key（首次运行自动引导配置；一行安装和手动安装都适用）
 
 > ### 🛡️ 引擎版本兼容性
 >
@@ -475,6 +484,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 - 🟢 **CI 徽章**：GitHub Actions（`.github/workflows/test.yml`）push/PR 自动跑测试，README 顶部实时绿勾
 - 📜 **开源协议 MIT → AGPL-3.0**：最强 copyleft——修改/分发/网络服务都必须开源全部衍生代码，防止"改两行拿去闭源卖钱"
 - 📖 **完整操作手册**：README 补齐全部操作——对话命令完整语法/示例、启动参数（`--no-input`/`--verbose`/`--auto-fix`）、环境变量（`DSH_HOME`/代理）、自定义 Skill/Preset 操作、会话管理、日志查看、卸载清理、`$DSH_HOME` 数据目录结构
+- 🧭 **文档理顺**：前置条件改为"一行安装自动处理 DSH / 手动安装才需先装引擎"；新增「为什么做这个」（官方 Harness 只有 Web 缺终端 CLI）；CONTRIBUTING 新增"加一个新命令"实战示例（改哪个文件、跑哪个测试）
 
 ### v1.3.0（2026-08）— 工程化重构
 
