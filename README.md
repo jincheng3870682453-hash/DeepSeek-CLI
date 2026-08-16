@@ -40,9 +40,15 @@
 
 ## 🎬 演示
 
-> 启动 → 配置向导（*终端窗口为动态 SVG：菜单光标上下移动、输入光标闪烁*）
+**真实终端运行画面**（点击图片可查看大图）：
 
-![DeepSeek CLI 演示](demo.svg)
+<p align="center">
+  <img src="assets/demo-terminal.png" width="480" alt="DeepSeek CLI 终端运行截图" />
+</p>
+
+**配置向导动态演示**（SVG 动画：菜单光标上下移动、输入光标闪烁）：
+
+![DeepSeek CLI 配置向导演示](demo.svg)
 
 ---
 
@@ -452,6 +458,7 @@ Remove-Item "$env:USERPROFILE\.dsh" -Recurse -Force
 - 📖 **完整操作手册**：README 补齐全部操作——对话命令完整语法/示例、启动参数（`--no-input`/`--verbose`/`--auto-fix`）、环境变量（`DSH_HOME`/代理）、自定义 Skill/Preset 操作、会话管理、日志查看、卸载清理、`$DSH_HOME` 数据目录结构
 - 🧭 **文档理顺**：前置条件改为"一行安装自动处理 DSH / 手动安装才需先装引擎"；新增「为什么做这个」（官方 Harness 只有 Web 缺终端 CLI）；CONTRIBUTING 新增"加一个新命令"实战示例（改哪个文件、跑哪个测试）
 - 🎨 **版面优化**：顶部 35 行鲸鱼 ASCII 艺术移至 [`assets/whale.txt`](assets/whale.txt)（终端启动画面不变），README 首屏更清爽
+- 📸 **真实终端截图**：演示章节新增 [`assets/demo-terminal.png`](assets/demo-terminal.png)（892×951，仅 20KB，加载快），动态 SVG 演示保留在下
 
 ### v1.3.0（2026-08）— 工程化重构
 
