@@ -24,12 +24,14 @@ let tmp;
 beforeEach(() => {
 	tmp = join(tmpdir(), `dsh-cli-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	process.env.DSH_HOME = tmp;
-	process.env.USERPROFILE = tmp; // os.homedir() on Windows reads USERPROFILE
+	process.env.USERPROFILE = tmp; // os.homedir() reads USERPROFILE on Windows
+	process.env.HOME = tmp; // ...and HOME on Linux/macOS
 });
 
 afterEach(() => {
 	delete process.env.DSH_HOME;
 	delete process.env.USERPROFILE;
+	delete process.env.HOME;
 	rmSync(tmp, { recursive: true, force: true });
 });
 
