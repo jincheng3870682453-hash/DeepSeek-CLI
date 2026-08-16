@@ -26,6 +26,8 @@ import { SessionId } from "@deepseek-ai/dsh-session";
 
 /** Stable Cordis plugin name. */
 const name = "cli-runner";
+/** The CLI's own semantic version, shown in the banner and README. */
+const VERSION = "1.0.0";
 /** Core services required before the interactive loop can start. */
 const inject = ["agentDefaultModel", "agents", "sessions", "llm", "permissionPresets", "agentPresets", "skills"];
 
@@ -138,7 +140,7 @@ async function playIntro(io, c, rows) {
 /** UI strings for the two supported languages. Values may use {0}/{1} placeholders. */
 const I18N = {
 	zh: {
-		bannerSub: "DeepSeek Harness · 交互式命令行 · v0.1.0-rc.6",
+		bannerSub: "DeepSeek Harness · 交互式命令行 · v{0}",
 		bannerHint: "输入消息直接对话 ·  /config 配置 ·  /help 帮助 ·  /exit 退出",
 		menuTitle: "启动配置",
 		menuMode: "权限模式",
@@ -268,7 +270,7 @@ const I18N = {
 		help: `\n${"─".repeat(46)}\n  /config  打开配置向导      /mode   切换权限模式\n  /cd      切换工作目录      /model  切换模型\n  /think   显示思考过程      /effort 思考强度\n  /preset  Agent 预设        /lang   语言\n  /busy    繁忙时行为        /plugins 插件列表\n  /skills  Skill 列表        /new    开启新会话\n  /exit    退出（Ctrl+C 也可）\n${"─".repeat(46)}\n  直接输入任意文字即可对话 · 同一会话会记住上下文\n`
 	},
 	en: {
-		bannerSub: "DeepSeek Harness · Interactive CLI · v0.1.0-rc.6",
+		bannerSub: "DeepSeek Harness · Interactive CLI · v{0}",
 		bannerHint: "Type to chat ·  /config ·  /help ·  /exit",
 		menuTitle: "Startup Config",
 		menuMode: "Permission",
@@ -1010,7 +1012,7 @@ async function run(ctx, config, io) {
 	}
 	io.stdout.write(c.blue(WHALE) + "\n");
 	io.stdout.write(c.blue(TITLE) + "\n");
-	io.stdout.write(`${c.sky(t("bannerSub"))}\n`);
+	io.stdout.write(`${c.sky(t("bannerSub", VERSION))}\n`);
 	io.stdout.write(`${c.dim("─".repeat(52))}\n`);
 	io.stdout.write(`${c.dim(t("bannerHint"))}\n\n`);
 

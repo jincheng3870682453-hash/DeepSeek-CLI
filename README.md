@@ -2,8 +2,11 @@
 
 # 🐋 DeepSeek CLI
 
-**命令行里的 DeepSeek Agent** — Codex / Claude Code 风格的终端交互体验，构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+**命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
+**v1.0.0** 🎉
+
+[![Version](https://img.shields.io/badge/Version-1.0.0-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -156,6 +159,23 @@ DeepSeek-CLI/
 ## 📄 许可证
 
 [MIT](LICENSE)
+
+---
+
+## 🏷️ 版本历史
+
+### v1.0.0（2026-08）— 首个正式版
+
+- 🐋 品牌启动画面（DeepSeek 大鲸鱼 logo + DEEPSEEK 大字 + 动态 SVG 演示）
+- 🎮 方向键配置向导（自动探测终端能力，不支持时降级数字输入）
+- 🔑 首次使用引导：自动检测并隐藏输入配置 API Key
+- 🛡️ 权限模式（只读 / 工作区写入 / 完全访问，实时切换）
+- 🧠 多 provider 模型选择 + 思考强度（off / high / max）
+- 🤖 Agent 预设（标准 / PTC / 创造 / 极简 + 自定义），已汉化
+- 📚 Skill 支持（目录加载 + `/skills new` 模板创建）
+- 🌐 完整中英文双语界面（`/lang` 实时切换）
+- ⚙️ 繁忙时行为（排队 / 输入即打断）、自定义目录、插件列表
+- ⌨️ 完整 CLI 交互：Ctrl+C 中断/清行/退出、多行粘贴合并、配置持久化
 
 ---
 
