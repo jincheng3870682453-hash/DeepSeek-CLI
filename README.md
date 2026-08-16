@@ -6,7 +6,7 @@
 
 **v1.0.0** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.0.0-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
+[![Version](https://img.shields.io/badge/Version-1.0.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
