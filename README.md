@@ -181,7 +181,7 @@ deepseek            # 启动（等同 dsh --profile cli）
 
 ```
 DeepSeek-CLI/
-├── install.cmd          # 一键安装脚本
+├── install.cmd / install.sh  # 一键安装（Windows / Linux-macOS）
 ├── profiles/
 │   └── cli/             # dsh cli profile
 │       ├── package.json
@@ -191,10 +191,40 @@ DeepSeek-CLI/
 │       └── cli-runner/
 │           └── index.js # 交互式 runner（核心逻辑）
 └── bin/                 # 启动命令
-    ├── deepseek.cmd / .ps1
+    ├── deepseek.cmd / .ps1 / (bash)  # 主命令
     ├── dsh-chat.cmd / .ps1   # 兼容别名
     └── dsh-ask.cmd / .ps1    # 一次性问答
 ```
+
+---
+
+## 💻 跨平台支持
+
+| 平台 | 支持 | 启动 |
+|---|---|---|
+| **Windows** | ✅ 完整支持 | `deepseek`（`.cmd` / `.ps1`） |
+| **Linux** | ✅ 完整支持 | `bin/deepseek`（bash 脚本） |
+| **macOS** | ✅ 预期可用 | `bin/deepseek`（bash 脚本） |
+| **WSL** | ✅ 支持 | `bin/deepseek` |
+
+**Linux / macOS 安装**：
+
+```bash
+# 1. 安装 DeepSeek Harness（提供 dsh 命令）
+npm install -g @deepseek-ai/dsh
+
+# 2. 安装本仓库
+git clone https://github.com/jincheng3870682453-hash/DeepSeek-CLI.git
+cd DeepSeek-CLI
+./install.sh          # 复制 profile + 安装 deepseek 命令
+
+# 3. 启动
+deepseek
+```
+
+核心逻辑（`cli-runner/index.js`）使用 Node 跨平台 API（readline / fs / path），
+路径统一用 `path.join` 处理，配置文件都在 `$DSH_HOME`（Linux 默认 `~/.dsh`），
+Windows 与 Linux 行为一致。
 
 ---
 

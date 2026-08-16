@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# deepseek — launch the DeepSeek CLI chat (dsh cli profile)
+# Works on Linux / macOS / WSL. Needs the dsh CLI on PATH (DeepSeek Harness).
+exec dsh --profile cli "$@"
