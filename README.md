@@ -4,9 +4,9 @@
 
 **命令行里的 DeepSeek Agent** — 把 DeepSeek V4 装进你的终端：Codex / Claude Code 风格的配置向导、权限与工作区管理、Agent 预设与 Skill 扩展、中英文双语界面、流式对话。构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)。
 
-**v1.1.0** 🎉
+**v1.2.0** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.1.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Version](https://img.shields.io/badge/Version-1.2.0-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![License](https://img.shields.io/badge/License-MIT-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![Built on](https://img.shields.io/badge/Built%20on-DeepSeek%20Harness-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -149,6 +149,21 @@ deepseek            # 启动（等同 dsh --profile cli）
 
 首次运行会引导配置 API Key；之后进入配置向导，`↑↓` 选择后 `Enter` 确认即可开始对话。
 
+### 🤖 脚本化 / 自动化
+
+```powershell
+# 非交互：跳过向导，管道输入即任务，EOF 自动退出（适合 cron / CI / 日志处理）
+tail -f error.log | deepseek --no-input "分析并修复上面的错误"
+echo "翻译这段：hello" | deepseek --no-input "把输入翻译成中文"
+
+# 调试：输出回合耗时 / token 消耗 / 工具调用
+deepseek --verbose
+
+# 代理：自动读取 HTTP_PROXY / HTTPS_PROXY 环境变量（无需额外参数）
+export HTTPS_PROXY=http://proxy.internal:8080
+deepseek
+```
+
 ---
 
 ## 🎮 交互
@@ -268,6 +283,13 @@ Windows 与 Linux 行为一致。
 ---
 
 ## 🏷️ 版本历史
+
+### v1.2.0（2026-08）— 脚本化与运维
+
+- 🚀 **`--no-input` 非交互模式**：跳过向导、管道输入即任务、EOF 自动退出（适合 `tail -f log | deepseek --no-input "修复错误"` 式自动化）
+- 📊 **`--verbose` / `--debug`**：输出回合耗时、token 消耗（prompt/output/缓存）、工具调用次数
+- 🌐 **代理自动适配**：检测 `HTTP_PROXY` / `HTTPS_PROXY` 环境变量，自动注入（企业内网友好）
+- 📂 **skill/preset 目录引导**：`/skills`、`/preset` 直接显示示例目录结构，新手一看就懂
 
 ### v1.1.0（2026-08）— 跨平台兼容
 
