@@ -320,7 +320,15 @@ async function run(ctx, config, io) {
 	rl.input.on("keypress", (str, key) => {
 		if (key === void 0) return;
 		if (secretMode) return; // askSecret() owns the stream
-		if (menu.onKey(str, key)) return; // menu open: navigation consumes keys
+		if (menu.onKey(str, key)) {
+			// 菜单打开时 readline 会把字符收进自己的行缓冲（并回显到框下方）；
+			// 立即清空，防止残留混进菜单关闭后的下一条输入，也避免回显破坏框体
+			if (rl.line !== "" || rl.cursor !== 0) {
+				rl.line = "";
+				rl.cursor = 0;
+			}
+			return;
+		}
 		// --- busy mode: interrupt-on-input (when configured) ---
 		if (busy && settings.busyAction === "interrupt") {
 			interruptTurn();

@@ -29,7 +29,7 @@ const defaults = {
 	provider: "deepseek-official",
 	model: "deepseek-v4-flash",
 	showReasoning: false,
-	effort: "high",
+	effort: "off",
 	preset: "standard",
 	language: "zh",
 	busyAction: "queue",

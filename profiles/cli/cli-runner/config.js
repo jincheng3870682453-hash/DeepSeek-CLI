@@ -22,14 +22,14 @@ export function loadSettings() {
 			provider: typeof parsed.provider === "string" ? parsed.provider : "deepseek-official",
 			model: typeof parsed.model === "string" ? parsed.model : "deepseek-v4-flash",
 			showReasoning: parsed.showReasoning === true,
-			effort: typeof parsed.effort === "string" ? parsed.effort : "high",
+			effort: typeof parsed.effort === "string" ? parsed.effort : "off",
 			preset: typeof parsed.preset === "string" ? parsed.preset : "standard",
 			language: typeof parsed.language === "string" ? parsed.language : "zh",
 			busyAction: typeof parsed.busyAction === "string" ? parsed.busyAction : "queue",
 			cwdHistory: Array.isArray(parsed.cwdHistory) ? parsed.cwdHistory.filter((p) => typeof p === "string" && existsSync(p)).slice(0, 10) : []
 		};
 	} catch {
-		return { mode: "workspace-write", cwd: process.cwd(), provider: "deepseek-official", model: "deepseek-v4-flash", showReasoning: false, effort: "high", preset: "standard", language: "zh", busyAction: "queue", cwdHistory: [] };
+		return { mode: "workspace-write", cwd: process.cwd(), provider: "deepseek-official", model: "deepseek-v4-flash", showReasoning: false, effort: "off", preset: "standard", language: "zh", busyAction: "queue", cwdHistory: [] };
 	}
 }
 

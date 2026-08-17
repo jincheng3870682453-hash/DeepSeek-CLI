@@ -81,6 +81,8 @@ export function createMenuController(io, c, t, tty) {
 			io.stdout.write(`\x1b[${lines}A\r`);
 			lines = 0;
 		}
+		// 顺带清掉框下方残留（readline 回显、退格擦除等可能留下的字符）
+		io.stdout.write("\x1b[J");
 	};
 
 	const draw = () => {
@@ -123,6 +125,10 @@ export function createMenuController(io, c, t, tty) {
 		} else if (str !== void 0 && /^[1-9]$/.test(str)) {
 			const idx = Number(str) - 1;
 			if (options[idx] !== void 0) close(options[idx]);
+		} else {
+			// 未处理键（退格/Delete/普通字符等）：readline 可能已在框下方
+			// 回显/擦除字符，重绘菜单框覆盖，保持框体完整（自愈）
+			draw();
 		}
 		return true; // consume every key while a menu is open
 	};
