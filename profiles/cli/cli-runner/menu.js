@@ -46,13 +46,15 @@ export function makePalette(tty) {
  *   consumeLine(line)      — true once, right after Enter confirmed a choice (drops the
  *                            'line' event that readline emits for that Enter).
  */
-export function createMenuController(io, c, t, tty) {
+export function createMenuController(io, c, t, tty, getCursorRow) {
 	let title = "";
 	let options = [];
 	let cursor = 0;
 	let resolve = null;
 	let lines = 0;
 	let swallow = false;
+	/** 框打开时的绝对行号（DSR 查询）；null 则退回相对定位 */
+	let anchorRow = null;
 
 	const isOpen = () => resolve !== null;
 
@@ -75,21 +77,36 @@ export function createMenuController(io, c, t, tty) {
 	};
 
 	const clearArea = () => {
-		if (lines > 0) {
-			io.stdout.write(`\x1b[${lines}A\r`);
-			for (let i = 0; i < lines; i++) io.stdout.write("\x1b[K\n");
-			io.stdout.write(`\x1b[${lines}A\r`);
+		if (lines <= 0) return;
+		if (anchorRow !== null) {
+			// 绝对定位：只清框占用的行，绝不误伤其他内容
+			for (let i = 0; i < lines; i++) io.stdout.write(`\x1b[${anchorRow + i};1H\x1b[K`);
+			io.stdout.write(`\x1b[${anchorRow};1H`);
 			lines = 0;
+			return;
 		}
+		// 相对定位兜底（无 VT 探测结果时）
+		io.stdout.write(`\x1b[${lines}A\r`);
+		for (let i = 0; i < lines; i++) io.stdout.write("\x1b[K\n");
+		io.stdout.write(`\x1b[${lines}A\r`);
 		// 顺带清掉框下方残留（readline 回显、退格擦除等可能留下的字符）
 		io.stdout.write("\x1b[J");
+		lines = 0;
 	};
 
 	const draw = () => {
 		clearArea();
 		const rendered = buildLines();
 		lines = rendered.length;
-		for (const line of rendered) io.stdout.write(line + "\n");
+		if (anchorRow !== null) {
+			// 绝对定位重绘：逐行定位 + 清尾，框体固定在同一位置，不会漂移
+			for (let i = 0; i < rendered.length; i++) {
+				io.stdout.write(`\x1b[${anchorRow + i};1H\x1b[K${rendered[i]}`);
+			}
+			io.stdout.write(`\x1b[${anchorRow + rendered.length - 1};1H`);
+		} else {
+			for (const line of rendered) io.stdout.write(line + "\n");
+		}
 	};
 
 	const close = (picked) => {
@@ -99,11 +116,13 @@ export function createMenuController(io, c, t, tty) {
 		if (r !== null) r(picked);
 	};
 
-	const pick = (titleText, opts) => new Promise((res) => {
+	const pick = (titleText, opts) => new Promise(async (res) => {
 		title = titleText;
 		options = opts;
 		cursor = 0;
 		resolve = res;
+		// 打开瞬间查询光标行号，把框钉在绝对位置（之后任何重绘都不依赖相对移动）
+		anchorRow = getCursorRow ? await getCursorRow() : null;
 		draw();
 	});
 

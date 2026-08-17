@@ -278,7 +278,25 @@ async function run(ctx, config, io) {
 	// ---- arrow-key menu -------------------------------------------------------
 	// One menu controller instance for the whole session; the wizard opens
 	// pickers with menu.pick() and the keypress handler forwards keys to it.
-	const menu = createMenuController(io, c, t, tty);
+	// getCursorRow: DSR query — returns the current cursor row (1-based) or null.
+	const getCursorRow = () => new Promise((resolveRow) => {
+		let done = false;
+		const finish = (row) => {
+			if (done) return;
+			done = true;
+			clearTimeout(timer);
+			rl.input.removeListener("data", onData);
+			resolveRow(row);
+		};
+		const onData = (chunk) => {
+			const m = chunk.toString("utf8").match(/\x1b\[(\d+);\d+R/);
+			if (m) finish(Number(m[1]));
+		};
+		const timer = setTimeout(() => finish(null), 100);
+		rl.input.on("data", onData);
+		io.stdout.write("\x1b[6n");
+	});
+	const menu = createMenuController(io, c, t, tty, getCursorRow);
 
 	/** Hidden single-line input (API keys): echoes asterisks; null on ESC. */
 	const askSecret = (prompt) => new Promise((resolve) => {
