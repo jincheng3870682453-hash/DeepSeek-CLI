@@ -55,6 +55,9 @@ export function createMenuController(io, c, t, tty, getCursorRow) {
 	let swallow = false;
 	/** 框打开时的绝对行号（DSR 查询）；null 则退回相对定位 */
 	let anchorRow = null;
+	/** DSR 查询应答期间：吞掉所有按键，防止应答被 readline 解析成
+	 *  数字快捷选择/回车等导致菜单刚打开就被误选或关闭 */
+	let pendingAnchor = false;
 
 	const isOpen = () => resolve !== null;
 
@@ -122,12 +125,15 @@ export function createMenuController(io, c, t, tty, getCursorRow) {
 		cursor = 0;
 		resolve = res;
 		// 打开瞬间查询光标行号，把框钉在绝对位置（之后任何重绘都不依赖相对移动）
+		pendingAnchor = true;
 		anchorRow = getCursorRow ? await getCursorRow() : null;
+		pendingAnchor = false;
 		draw();
 	});
 
 	const onKey = (str, key) => {
 		if (key === void 0 || resolve === null) return false;
+		if (pendingAnchor) return true; // DSR 应答期间的按键一律吞掉
 		if (key.name === "up") {
 			cursor = (cursor - 1 + options.length) % options.length;
 			draw();
