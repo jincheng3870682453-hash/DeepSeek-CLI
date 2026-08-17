@@ -31,10 +31,8 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
     $Zip = Join-Path $BaseDir "node.zip"
     # 官方源优先，失败自动切国内镜像（npmmirror）
-    $NodeUrls = @(
-        "https://nodejs.org/dist/$NodeVersion/$NodePkg.zip",
-        "https://npmmirror.com/mirrors/node/$NodeVersion/$NodePkg.zip"
-    )
+    $NodeMirrors = @("https://nodejs.org/dist", "https://npmmirror.com/mirrors/node")
+    $NodeUrls = $NodeMirrors | ForEach-Object { "$_/$NodeVersion/$NodePkg.zip" }
     $NodeDownloaded = $false
     foreach ($u in $NodeUrls) {
         try {
@@ -46,6 +44,28 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     if (-not $NodeDownloaded) {
         Write-Host "❌ Node.js 下载失败（网络问题）。请手动安装：https://nodejs.org" -ForegroundColor Red
         exit 1
+    }
+    # SHA256 校验：与官方 SHASUMS256.txt 比对，防止下载被篡改/损坏
+    $Sums = $null
+    foreach ($m in $NodeMirrors) {
+        try {
+            $Sums = (Invoke-WebRequest -Uri "$m/$NodeVersion/SHASUMS256.txt" -UseBasicParsing).Content
+            break
+        } catch { }
+    }
+    if ($Sums) {
+        $Expected = (($Sums -split "`n" | Where-Object { $_ -match "\s$([regex]::Escape($NodePkg))\.zip\s*$" } | Select-Object -First 1) -split "\s+")[0]
+        if ($Expected) {
+            $Actual = (Get-FileHash -Path $Zip -Algorithm SHA256).Hash.ToLower()
+            if ($Actual -ne $Expected.ToLower()) {
+                Write-Host "❌ SHA256 校验失败：下载的 Node.js 可能被篡改或已损坏，已中止安装" -ForegroundColor Red
+                Remove-Item $Zip -Force -ErrorAction SilentlyContinue
+                exit 1
+            }
+            Write-Host "✓ SHA256 校验通过"
+        }
+    } else {
+        Write-Host "⚠️ 无法获取官方校验和，跳过 SHA256 校验（建议核对文件来源）" -ForegroundColor Yellow
     }
     Expand-Archive -Path $Zip -DestinationPath $BaseDir -Force
     Remove-Item $Zip -Force

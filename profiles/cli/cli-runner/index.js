@@ -816,7 +816,7 @@ async function run(ctx, config, io) {
 							if (presets !== void 0 && typeof presets.copy === "function") {
 								try {
 									await presets.copy("standard", name, name);
-									io.stdout.write(`${c.green(t("customPresetCreated", customPresetDir() + "\\" + name))}${c.dim(t("customPresetCreatedHint"))}\n`);
+									io.stdout.write(`${c.green(t("customPresetCreated", join(customPresetDir(), name)))}${c.dim(t("customPresetCreatedHint"))}\n`);
 								} catch (err) {
 									io.stdout.write(`${c.red(t("createFailed", err.message))}\n`);
 								}
@@ -1304,7 +1304,7 @@ async function run(ctx, config, io) {
 					settings.model = arg;
 					saveSettings(settings);
 					await rebuildAgent();
-					io.stdout.write(`${c.green(t("modelSet", arg, ""))}${c.dim(t("newSessionHint"))}\n`);
+					io.stdout.write(`${c.green(t("modelSet", arg, settings.provider))}${c.dim(t("newSessionHint"))}\n`);
 					continue;
 				}
 				case "think": {
@@ -1346,7 +1346,7 @@ async function run(ctx, config, io) {
 						}
 						try {
 							await presets.copy("standard", name, name);
-							io.stdout.write(`${c.green(t("presetCreated", `${customPresetDir()}\\${name}`))}\n`);
+							io.stdout.write(`${c.green(t("presetCreated", join(customPresetDir(), name)))}\n`);
 							io.stdout.write(`${c.dim(t("presetCreatedHint"))}\n`);
 						} catch (err) {
 							io.stdout.write(`${c.red(t("createFailed", err.message))}\n`);

@@ -76,5 +76,5 @@ export function saveApiKey(key) {
 		if (content !== "") content += "\n";
 	}
 	content += `DEEPSEEK_API_KEY: "${key}"\n`;
-	writeFileSync(file, content, "utf8");
+	writeFileSync(file, content, { encoding: "utf8", mode: 0o600 });
 }

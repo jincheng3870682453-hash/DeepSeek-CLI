@@ -33,6 +33,26 @@ else
   esac
   mkdir -p "$BASE_DIR"
   curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/$NODE_PKG.tar.gz" -o "$BASE_DIR/node.tar.gz"
+  # SHA256 校验：与官方 SHASUMS256.txt 比对，防止下载被篡改/损坏
+  SUMS=""
+  for M in "https://nodejs.org/dist" "https://npmmirror.com/mirrors/node"; do
+    SUMS="$(curl -fsSL "$M/$NODE_VERSION/SHASUMS256.txt" 2>/dev/null)" && break
+  done
+  if [ -n "$SUMS" ]; then
+    EXPECTED="$(echo "$SUMS" | grep " $NODE_PKG.tar.gz\$" | awk '{print $1}')"
+    if [ -n "$EXPECTED" ]; then
+      ACTUAL="$(sha256sum "$BASE_DIR/node.tar.gz" 2>/dev/null | awk '{print $1}')"
+      [ -z "$ACTUAL" ] && ACTUAL="$(shasum -a 256 "$BASE_DIR/node.tar.gz" 2>/dev/null | awk '{print $1}')"  # macOS
+      if [ "$ACTUAL" != "$EXPECTED" ]; then
+        echo "❌ SHA256 校验失败：下载的 Node.js 可能被篡改或已损坏，已中止安装"
+        rm -f "$BASE_DIR/node.tar.gz"
+        exit 1
+      fi
+      echo "✓ SHA256 校验通过"
+    fi
+  else
+    echo "⚠️ 无法获取官方校验和，跳过 SHA256 校验（建议核对文件来源）"
+  fi
   tar -xzf "$BASE_DIR/node.tar.gz" -C "$BASE_DIR"
   rm -f "$BASE_DIR/node.tar.gz"
   export PATH="$BASE_DIR/$NODE_PKG/bin:$PATH"

@@ -1,8 +1,11 @@
 // test/utils.test.js — unit tests for cli-runner/utils.js (pure helpers, no DSH engine)
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { join, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import {
 	VERSION,
 	makeT,
@@ -37,7 +40,10 @@ afterEach(() => {
 
 describe("VERSION / constants", () => {
 	it("matches the packaged release", () => {
-		expect(VERSION).toBe("1.3.1");
+		// 不再硬编码版本号：直接与根 package.json 对比，
+		// 发版时只改一处，测试天然防版本漂移
+		const pkg = JSON.parse(readFileSync(resolve(__dirname, "../package.json"), "utf8"));
+		expect(VERSION).toBe(pkg.version);
 	});
 	it("covers all three permission modes", () => {
 		expect(Object.keys(MODE_LABELS).sort()).toEqual([
