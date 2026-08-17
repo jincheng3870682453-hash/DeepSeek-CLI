@@ -7,9 +7,9 @@
 > ⚠️ **非官方社区项目**：本工具由社区开发者独立构建，与 DeepSeek（深度求索）无关联、未经其认可或赞助。
 > *Unofficial community project — not affiliated with, endorsed by, or sponsored by DeepSeek.*
 
-**v1.3.1** 🎉
+**v1.3.2** 🎉
 
-[![Version](https://img.shields.io/badge/Version-1.3.1-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
+[![Version](https://img.shields.io/badge/Version-1.3.2-4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI)
 [![Tests](https://img.shields.io/github/actions/workflow/status/jincheng3870682453-hash/DeepSeek-CLI/test.yml?branch=master&label=Tests&logo=vitest&logoColor=white&color=4D6BFE)](https://github.com/jincheng3870682453-hash/DeepSeek-CLI/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-AGPL--3.0-4D6BFE)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
@@ -628,6 +628,12 @@ DeepSeek API 按账号限流。处理：
 
 <a id="changelog"></a>
 ## 🏷️ 版本历史
+
+### v1.3.2（2026-08）— 安装脚本架构自适应
+
+- 🔧 **`install-oneliner.ps1` 架构自适应**：自动检测 Windows CPU 架构（`ARM64` / `AMD64` / `x86`，含 32 位进程在 64 位系统上的 `PROCESSOR_ARCHITEW6432` 修正），下载对应便携 Node（`win-arm64` / `win-x64` / `win-x86`），不再写死 `win-x64`（Windows on ARM 也能装）
+- 🌐 **下载镜像兜底**：Node.js 官方源失败自动切国内 npmmirror 镜像，国内网络安装更稳
+- ⚠️ 失败时明确报错并提示手动安装，不再静默失败
 
 ### v1.3.1（2026-08）— 再拆一层 + CI 绿勾 + AGPL 协议
 

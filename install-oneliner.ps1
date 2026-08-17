@@ -13,17 +13,40 @@ $BaseDir = Join-Path $env:LOCALAPPDATA "DeepSeek-CLI"
 Write-Host "🐋 DeepSeek CLI 一键安装（零依赖）" -ForegroundColor Cyan
 Write-Host "────────────────────────────────"
 
-# 1. Node.js — 系统没有就自动下载便携版
+# 1. Node.js — 系统没有就自动下载便携版（自动检测架构：arm64 / x64 / x86）
 if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Host "✓ Node.js: $(node --version)（系统自带）"
     $NodeBin = (Get-Command node).Source
     $NpmBin = (Get-Command npm -ErrorAction SilentlyContinue).Source
 } else {
-    Write-Host "→ 未检测到 Node.js，自动下载便携版 $NodeVersion ..."
-    $NodePkg = "node-$NodeVersion-win-x64"
+    # 检测 CPU 架构（32 位进程跑在 64 位系统时，真实架构在 PROCESSOR_ARCHITEW6432）
+    $Pa = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+    $NodeArch = switch ($Pa) {
+        "ARM64" { "arm64" }
+        "AMD64" { "x64" }
+        default { "x86" }
+    }
+    $NodePkg = "node-$NodeVersion-win-$NodeArch"
+    Write-Host "→ 未检测到 Node.js，自动下载便携版 $NodePkg ..."
     New-Item -ItemType Directory -Path $BaseDir -Force | Out-Null
     $Zip = Join-Path $BaseDir "node.zip"
-    Invoke-WebRequest -Uri "https://nodejs.org/dist/$NodeVersion/$NodePkg.zip" -OutFile $Zip -UseBasicParsing
+    # 官方源优先，失败自动切国内镜像（npmmirror）
+    $NodeUrls = @(
+        "https://nodejs.org/dist/$NodeVersion/$NodePkg.zip",
+        "https://npmmirror.com/mirrors/node/$NodeVersion/$NodePkg.zip"
+    )
+    $NodeDownloaded = $false
+    foreach ($u in $NodeUrls) {
+        try {
+            Invoke-WebRequest -Uri $u -OutFile $Zip -UseBasicParsing
+            $NodeDownloaded = $true
+            break
+        } catch { }
+    }
+    if (-not $NodeDownloaded) {
+        Write-Host "❌ Node.js 下载失败（网络问题）。请手动安装：https://nodejs.org" -ForegroundColor Red
+        exit 1
+    }
     Expand-Archive -Path $Zip -DestinationPath $BaseDir -Force
     Remove-Item $Zip -Force
     $NodeBin = Join-Path $BaseDir "$NodePkg\node.exe"
