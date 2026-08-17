@@ -16,7 +16,8 @@
 
 import { randomUUID } from "node:crypto";
 import { createInterface } from "node:readline";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join, basename } from "node:path";
 import z from "@deepseek-ai/schemastery";
 import { installModelSelection } from "@deepseek-ai/dsh-agent";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
@@ -352,16 +353,10 @@ async function run(ctx, config, io) {
 			interruptTurn();
 			return;
 		}
-		// --- normal chat mode: ESC behaves like Ctrl+C ---
-		if (key.name === "escape" && !exiting) {
-			if (busy) {
-				interruptTurn();
-			} else if (tty && rl.line !== void 0 && rl.line.trim() !== "") {
-				clearInputLine();
-			} else {
-				exiting = true;
-				settle(null);
-			}
+		// --- chat 模式：ESC = 退出流程（打断回答 → 询问是否保存 → 退出）---
+		if (key.name === "escape" && !exiting && !menu.isOpen()) {
+			requestExit(); // async，不阻塞 keypress
+			return;
 		}
 	});
 
@@ -446,14 +441,14 @@ async function run(ctx, config, io) {
 	// ---- agent lifecycle ---------------------------------------------------
 	let agent = null;
 
-	async function createAgentFor() {
+	async function createAgentFor(sessionIdOverride) {
 		const selection = {
 			provider: settings.provider,
 			model: settings.model,
 			reasoningEffort: settings.effort === "off" ? "off" : settings.effort
 		};
 		const { agent: next } = await agents.create({
-			sessionId: SessionId(`session-${randomUUID()}`),
+			sessionId: sessionIdOverride ? SessionId(sessionIdOverride) : SessionId(`session-${randomUUID()}`),
 			meta: { cwd: settings.cwd },
 			agentOptions: selection,
 			setup: async (agentCtx) => {
@@ -508,10 +503,73 @@ async function run(ctx, config, io) {
 		await createAgentFor();
 	}
 
+	/** 递归收集会话文件（$DSH_HOME/sessions/**，文件名 session-*） */
+	const listSessionFiles = () => {
+		const root = join(dshHome(), "sessions");
+		const out = [];
+		const walk = (dir) => {
+			let entries = [];
+			try {
+				entries = readdirSync(dir, { withFileTypes: true });
+			} catch {
+				return;
+			}
+			for (const e of entries) {
+				const p = join(dir, e.name);
+				if (e.isDirectory()) walk(p);
+				else if (e.name.startsWith("session-") && !e.name.includes(".tmp")) {
+					try {
+						const m = statSync(p).mtimeMs;
+						out.push({ id: e.name, path: p, mtime: m });
+					} catch {}
+				}
+			}
+		};
+		walk(root);
+		out.sort((a, b) => b.mtime - a.mtime);
+		return out;
+	};
+
+	/** /resume：列出历史会话，选一个载入 */
+	const doResume = async () => {
+		if (busy) {
+			io.stdout.write(`${c.dim(t("busyWait"))}\n`);
+			return;
+		}
+		const files = listSessionFiles();
+		if (files.length === 0) {
+			io.stdout.write(`${c.dim(t("noSessions"))}\n`);
+			return;
+		}
+		const fmt = (ts) => {
+			const d = new Date(ts);
+			const pad = (n) => String(n).padStart(2, "0");
+			return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+		};
+		const picked = await menu.pick(
+			t("resumeTitle"),
+			files.map((f) => ({ label: `${basename(f.id)}  ${c.dim(fmt(f.mtime))}`, value: f.id }))
+		);
+		if (picked === null) return;
+		// 落盘当前会话后，用所选会话 id 重建 agent
+		if (agent !== void 0 && agent !== null) {
+			try {
+				await sessions.flush(agent.session);
+			} catch {}
+		}
+		await createAgentFor(picked.value);
+		io.stdout.write(`${c.green(t("resumed", picked.value))}\n`);
+	};
+
+	/** 用户选择"不保存"时置位，finish 跳过落盘 */
+	let discardSession = false;
+
 	async function finish(code) {
 		try {
 			rl.close();
-			if (agent !== void 0 && agent !== null) await sessions.flush(agent.session);
+			if (agent !== void 0 && agent !== null && !discardSession) {
+				await sessions.flush(agent.session);
+			}
 		} catch {
 			// best-effort flush; exit code still wins
 		}
@@ -521,6 +579,25 @@ async function run(ctx, config, io) {
 		// forever. Force the exit once the session flush has been written.
 		setTimeout(() => process.exit(code), 300);
 	}
+
+	/**
+	 * ESC 退出流程：先打断进行中的回答，再询问是否保存本次对话。
+	 *  y/回车 = 保存并退出（默认）  n = 不保存直接退出  其他 = 取消退出继续对话
+	 */
+	const requestExit = async () => {
+		if (exiting) return;
+		if (busy) interruptTurn();
+		io.stdout.write("\n");
+		const ans = (await ask(c.dim(t("exitSavePrompt"))) ?? "").trim().toLowerCase();
+		if (ans === "n" || ans === "no") {
+			discardSession = true;
+		} else if (ans !== "" && ans !== "y" && ans !== "yes") {
+			io.stdout.write(`${c.dim(t("exitCancelled"))}\n`);
+			return; // 取消退出，继续对话
+		}
+		exiting = true;
+		settle(null);
+	};
 
 	// ---- banner -------------------------------------------------------------
 	if (tty && config.showIntro) {
@@ -1392,6 +1469,10 @@ async function run(ctx, config, io) {
 				case "new": {
 					await rebuildAgent();
 					io.stdout.write(`${c.dim(t("newSessionLine"))}\n`);
+					continue;
+				}
+				case "resume": {
+					await doResume();
 					continue;
 				}
 				default:

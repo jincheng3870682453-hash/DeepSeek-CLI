@@ -266,8 +266,9 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 | `/plugins` | `/plugins` | 列出已加载插件 |
 | `/skills` | `/skills`<br>`/skills new <名称>` | 列出可用 Skill 与自定义目录；`new`：在 `$DSH_HOME/skills/<名称>/` 创建 SKILL.md 模板 |
 | `/new` | `/new` | 开启新会话（旧会话保留在 `$DSH_HOME/sessions/`） |
+| `/resume` | `/resume` | 列出历史会话，选一个载入继续对话 |
 | `/help` | `/help`（或 `/h`） | 显示帮助 |
-| `/exit` | `/exit`（或 `/quit` / `/q`） | 退出（`Ctrl+C` 空输入也行） |
+| `/exit` | `/exit`（或 `/quit` / `/q`） | 退出（退出前询问是否保存对话） |
 
 <a id="keys"></a>
 ### 按键
@@ -278,7 +279,8 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 | `Ctrl+C`（回答中） | 中断回答，立即回到提示符 |
 | `Ctrl+C`（输入中） | 清空当前输入行 |
 | `Ctrl+C`（空输入） | 退出 |
-| `Esc` | 同 `Ctrl+C` |
+| `Esc`（对话中） | **退出流程**：先打断回答 → 询问「是否保存本次对话？」→ `y` 保存并退出 / `n` 不保存 / 其他键取消 |
+| `/resume` | 下次使用时载入保存的对话继续 |
 | 多行粘贴 | 自动合并为一条消息 |
 
 ---
