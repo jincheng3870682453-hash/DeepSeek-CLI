@@ -141,7 +141,7 @@ curl -fsSL https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CL
 irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.ps1 | iex
 ```
 
-> 脚本自动完成：① 检测/下载 Node.js（系统没有就自动装便携版到 `~/.deepseek-cli` 或 `%LOCALAPPDATA%\DeepSeek-CLI`，**自动检测 CPU 架构**：Windows 的 `win-x64`/`win-arm64`/`win-x86`，macOS/Linux 的 x64/arm64 全覆盖；国内网络官方源失败自动切 npmmirror 镜像）→ ② 安装 DSH 引擎 → ③ 拉取仓库 → ④ 装 profile → ⑤ 装 `deepseek` 命令。
+> 脚本自动完成：① 检测/下载 Node.js（系统没有就自动装便携版到 `~/.deepseek-cli` 或 `%LOCALAPPDATA%\DeepSeek-CLI`，**自动检测 CPU 架构**：Windows 的 `win-x64`/`win-arm64`/`win-x86`，macOS/Linux 的 x64/arm64 全覆盖；国内网络官方源失败自动切 npmmirror 镜像；**下载后与官方 `SHASUMS256.txt` 做 SHA256 校验**，不匹配即中止，防止篡改/损坏）→ ② 安装 DSH 引擎 → ③ 拉取仓库 → ④ 装 profile → ⑤ 装 `deepseek` 命令。
 > 装完新开终端输入 `deepseek` 即可，首次运行引导配置 API Key。
 > 若下载失败（网络问题），改用下面的仓库安装方式。
 
@@ -291,7 +291,7 @@ tail -f app.log | deepseek --no-input -v "发现异常就总结"
 ```
 DeepSeek-CLI/
 ├── install.cmd / install.sh     # 一键安装（Windows / Linux-macOS）
-├── install-oneliner.sh / .ps1   # 一行安装（零依赖，含 dsh 版本校验）
+├── install-oneliner.sh / .ps1   # 一行安装（零依赖，含 SHA256 校验 + dsh 版本校验）
 ├── package.json                 # 开发依赖（vitest 单元测试）
 ├── test/                        # 单元测试（vitest，55 用例）
 │   ├── utils.test.js            # i18n / CJK 宽度 / 路径 / 脱敏

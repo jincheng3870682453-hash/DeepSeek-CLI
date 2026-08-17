@@ -151,7 +151,8 @@ irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/maste
 
 > The script: ① detects/downloads Node.js (portable copy to `~/.deepseek-cli` or `%LOCALAPPDATA%\DeepSeek-CLI`,
 > **auto-detects CPU architecture**: `win-x64` / `win-arm64` / `win-x86` on Windows, x64/arm64 on macOS/Linux;
-> falls back to the npmmirror CN mirror if the official source fails) → ② installs the DSH engine → ③ clones the repo →
+> falls back to the npmmirror CN mirror if the official source fails; **verifies the download against the official
+> `SHASUMS256.txt` (SHA-256)** and aborts on mismatch, so a tampered or corrupted archive never runs) → ② installs the DSH engine → ③ clones the repo →
 > ④ installs the profile → ⑤ installs the `deepseek` command.
 > Open a new terminal and run `deepseek` — first run guides you through the API key.
 > If the download fails (network), use the repo install methods below.
@@ -299,7 +300,7 @@ Startup config
 ```
 DeepSeek-CLI/
 ├── install.cmd / install.sh     # one-command install (Windows / Linux-macOS)
-├── install-oneliner.sh / .ps1   # one-line install (zero prerequisites, dsh version check)
+├── install-oneliner.sh / .ps1   # one-line install (zero prerequisites, SHA-256 verify + dsh version check)
 ├── package.json                 # dev deps (vitest)
 ├── test/                        # unit tests (vitest, 55 cases)
 │   ├── utils.test.js            # i18n / CJK width / paths / masking
