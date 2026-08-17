@@ -139,7 +139,7 @@ curl -fsSL https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CL
 irm https://raw.githubusercontent.com/jincheng3870682453-hash/DeepSeek-CLI/master/install-oneliner.ps1 | iex
 ```
 
-> 脚本自动完成：① 检测/下载 Node.js（系统没有就自动装便携版到 `~/.deepseek-cli` 或 `%LOCALAPPDATA%\DeepSeek-CLI`）→ ② 安装 DSH 引擎 → ③ 拉取仓库 → ④ 装 profile → ⑤ 装 `deepseek` 命令。
+> 脚本自动完成：① 检测/下载 Node.js（系统没有就自动装便携版到 `~/.deepseek-cli` 或 `%LOCALAPPDATA%\DeepSeek-CLI`，**自动检测 CPU 架构**：Windows 的 `win-x64`/`win-arm64`/`win-x86`，macOS/Linux 的 x64/arm64 全覆盖；国内网络官方源失败自动切 npmmirror 镜像）→ ② 安装 DSH 引擎 → ③ 拉取仓库 → ④ 装 profile → ⑤ 装 `deepseek` 命令。
 > 装完新开终端输入 `deepseek` 即可，首次运行引导配置 API Key。
 > 若下载失败（网络问题），改用下面的仓库安装方式。
 
@@ -633,6 +633,7 @@ DeepSeek API 按账号限流。处理：
 
 - 🔧 **`install-oneliner.ps1` 架构自适应**：自动检测 Windows CPU 架构（`ARM64` / `AMD64` / `x86`，含 32 位进程在 64 位系统上的 `PROCESSOR_ARCHITEW6432` 修正），下载对应便携 Node（`win-arm64` / `win-x64` / `win-x86`），不再写死 `win-x64`（Windows on ARM 也能装）
 - 🌐 **下载镜像兜底**：Node.js 官方源失败自动切国内 npmmirror 镜像，国内网络安装更稳
+- 🔬 **CI 升级跨平台矩阵**：GitHub Actions 从单机（Ubuntu/Node 22）升级为 **Windows + Ubuntu × Node 18/20/22** 六种组合全量跑 vitest
 - ⚠️ 失败时明确报错并提示手动安装，不再静默失败
 
 ### v1.3.1（2026-08）— 再拆一层 + CI 绿勾 + AGPL 协议
