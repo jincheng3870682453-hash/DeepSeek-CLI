@@ -14,6 +14,7 @@ export const I18N = {
 	zh: {
 		bannerSub: "DeepSeek Harness · 交互式命令行 · v{0}",
 		bannerHint: "输入消息直接对话 ·  /config 配置 ·  /help 帮助 ·  /exit 退出",
+		starting: "正在启动引擎，请稍候...",
 		menuTitle: "启动配置",
 		menuMode: "权限模式",
 		menuCwd: "工作目录",
@@ -144,6 +145,7 @@ export const I18N = {
 	en: {
 		bannerSub: "DeepSeek Harness · Interactive CLI · v{0}",
 		bannerHint: "Type to chat ·  /config ·  /help ·  /exit",
+		starting: "Starting engine, please wait...",
 		menuTitle: "Startup Config",
 		menuMode: "Permission",
 		menuCwd: "Working Dir",

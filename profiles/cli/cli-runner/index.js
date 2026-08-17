@@ -1029,22 +1029,22 @@ async function run(ctx, config, io) {
 		}
 	};
 
-	// Pre-create the agent in the background while the wizard runs so choosing
-	// "start" is instant. cwd/model changes inside the wizard wait for this
-	// creation to settle, then rebuild with the new settings.
+	// 先等引擎 / Agent 初始化完全完成，再显示配置向导——
+	// 避免初始化较慢时蓝色配置框提前弹出（向导内改 cwd/model 会用 rebuildAgent 重建）
 	let creating = null;
-	if (config.showWizard && (agent === void 0 || agent === null)) {
+	if (agent === void 0 || agent === null) {
+		if (tty) io.stdout.write(`${c.dim(t("starting"))}\n`);
 		creating = createAgentFor().catch(() => {
 			creating = null;
 		});
 	}
-	if (config.showWizard) {
-		const result = await runWizard();
-		if (result === null) return;
-	}
 	if (creating !== null) {
 		await creating.catch(() => {});
 		creating = null;
+	}
+	if (config.showWizard) {
+		const result = await runWizard();
+		if (result === null) return;
 	}
 	if (agent === void 0 || agent === null) await createAgentFor();
 
