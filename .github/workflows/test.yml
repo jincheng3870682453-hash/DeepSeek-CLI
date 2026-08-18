@@ -7,12 +7,13 @@ on:
 
 jobs:
   test:
-    name: Node ${{ matrix.node }} · ${{ matrix.os }}
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [18, 20, 22]
+        # vitest 4 / rolldown requires Node >= 20.12 (styleText in node:util)
+        node: [20, 22]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
